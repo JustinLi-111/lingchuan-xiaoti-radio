@@ -1,4 +1,4 @@
-# 小提星空广播站 - Supabase + Vercel 部署指南
+# 彤彤星空广播站 - Supabase + Vercel 部署指南
 
 本指南将帮助你把星空广播站从本地开发环境部署到互联网上，让它拥有自己的域名，可以被公开访问。
 
@@ -58,7 +58,7 @@
 
 ```sql
 -- ============================================
--- 小提星空广播站 - 数据库建表 SQL
+-- 彤彤星空广播站 - 数据库建表 SQL
 -- ============================================
 
 -- 1. 创建 stories 表（存储睡前故事）
@@ -100,15 +100,59 @@ CREATE POLICY "Allow public read comments" ON comments
 -- 允许所有人添加评论
 CREATE POLICY "Allow public insert comments" ON comments
     FOR INSERT WITH CHECK (true);
+
+-- 5. 创建 letters 表（存储时光信箱的信件）
+CREATE TABLE IF NOT EXISTS letters (
+    id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL,                    -- 信件标题
+    content TEXT NOT NULL,                   -- 信件内容（长文）
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),  -- 创建时间
+    read_count INTEGER DEFAULT 0             -- 阅读次数
+);
+
+-- 6. 创建 letter_comments 表（存储信件评论）
+CREATE TABLE IF NOT EXISTS letter_comments (
+    id BIGSERIAL PRIMARY KEY,
+    letter_id BIGINT REFERENCES letters(id) ON DELETE CASCADE,
+    selected_text TEXT NOT NULL,             -- 选中的文字
+    comment TEXT NOT NULL,                   -- 评论内容
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7. 创建索引
+CREATE INDEX IF NOT EXISTS idx_letter_comments_letter_id ON letter_comments(letter_id);
+CREATE INDEX IF NOT EXISTS idx_letters_created_at ON letters(created_at DESC);
+
+-- 8. 设置安全策略
+ALTER TABLE letters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE letter_comments ENABLE ROW LEVEL SECURITY;
+
+-- 允许所有人读取信件
+CREATE POLICY "Allow public read letters" ON letters
+    FOR SELECT USING (true);
+
+-- 允许所有人添加信件
+CREATE POLICY "Allow public insert letters" ON letters
+    FOR INSERT WITH CHECK (true);
+
+-- 允许所有人读取信件评论
+CREATE POLICY "Allow public read letter_comments" ON letter_comments
+    FOR SELECT USING (true);
+
+-- 允许所有人添加信件评论
+CREATE POLICY "Allow public insert letter_comments" ON letter_comments
+    FOR INSERT WITH CHECK (true);
 ```
 
 点击右下角 **"Run"** 按钮，看到 "Success" 表示创建成功。
 
 ### 2.3 验证表创建成功
 
-在左侧菜单点击 **"Table Editor"**，你应该能看到两个表：
+在左侧菜单点击 **"Table Editor"**，你应该能看到四个表：
 - `stories`
 - `comments`
+- `letters`
+- `letter_comments`
 
 ---
 
@@ -199,7 +243,7 @@ git init
 git add .
 
 # 创建第一次提交
-git commit -m "初始化小提星空广播站"
+git commit -m "初始化彤彤星空广播站"
 
 # 关联远程仓库（替换为你的仓库地址）
 git remote add origin https://github.com/你的用户名/starry-radio.git
@@ -319,10 +363,10 @@ CREATE POLICY "Allow public upload" ON storage.objects
 
 ---
 
-## 📱 分享给小提
+## 📱 分享给彤彤
 
 把网址发给她：
-- 她输入入场密码 `xiaoti` 进入
+- 她输入入场密码 `zhulaoshi` 进入
 - 她可以收听故事、查看往期、发表评论
 - 她无法上传或删除故事（除非知道管理员密码）
 

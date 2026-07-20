@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import EntryPage from '@/views/EntryPage.vue'
 import HomePage from '@/views/HomePage.vue'
 import ArchivePage from '@/views/ArchivePage.vue'
+import MailboxPage from '@/views/MailboxPage.vue'
+import MomentsPage from '@/views/MomentsPage.vue'
 
 const routes = [
   {
@@ -18,6 +20,16 @@ const routes = [
     path: '/archive',
     name: 'archive',
     component: ArchivePage,
+  },
+  {
+    path: '/mailbox',
+    name: 'mailbox',
+    component: MailboxPage,
+  },
+  {
+    path: '/moments',
+    name: 'moments',
+    component: MomentsPage,
   },
 ]
 

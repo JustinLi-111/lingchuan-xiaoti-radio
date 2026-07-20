@@ -28,8 +28,11 @@ const togglePlay = () => {
   
   if (isPlaying.value) {
     audioRef.value.pause()
+    isPlaying.value = false
   } else {
-    audioRef.value.play().catch(() => {
+    audioRef.value.play().then(() => {
+      isPlaying.value = true
+    }).catch(() => {
       isPlaying.value = false
     })
   }
@@ -50,6 +53,14 @@ const handleLoadedMetadata = () => {
 const handleEnded = () => {
   isPlaying.value = false
   currentTime.value = 0
+}
+
+const handlePlay = () => {
+  isPlaying.value = true
+}
+
+const handlePause = () => {
+  isPlaying.value = false
 }
 
 const handleSeek = (e: Event) => {
@@ -86,6 +97,8 @@ onMounted(() => {
     audioRef.value.addEventListener('timeupdate', handleTimeUpdate)
     audioRef.value.addEventListener('loadedmetadata', handleLoadedMetadata)
     audioRef.value.addEventListener('ended', handleEnded)
+    audioRef.value.addEventListener('play', handlePlay)
+    audioRef.value.addEventListener('pause', handlePause)
   }
 })
 
@@ -94,6 +107,8 @@ onUnmounted(() => {
     audioRef.value.removeEventListener('timeupdate', handleTimeUpdate)
     audioRef.value.removeEventListener('loadedmetadata', handleLoadedMetadata)
     audioRef.value.removeEventListener('ended', handleEnded)
+    audioRef.value.removeEventListener('play', handlePlay)
+    audioRef.value.removeEventListener('pause', handlePause)
   }
 })
 </script>

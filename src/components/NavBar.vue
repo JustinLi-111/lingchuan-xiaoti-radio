@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Home, Library, Sparkles, LogOut, Settings, Plus, X, Lock } from 'lucide-vue-next'
+import { Home, Library, Mail, Sparkles, LogOut, Settings, Plus, X, Lock, Trash2, AlertTriangle, Star } from 'lucide-vue-next'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 
 const emit = defineEmits<{
@@ -10,11 +10,13 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const route = useRoute()
-const { isAdmin, loginAdmin, logoutAdmin, checkAdmin } = useSupabaseStories()
+const { isAdmin, loginAdmin, logoutAdmin, checkAdmin, clearAllData } = useSupabaseStories()
 
 const showAdminModal = ref(false)
 const adminPassword = ref('')
 const adminError = ref('')
+const showClearModal = ref(false)
+const isClearing = ref(false)
 
 const goHome = () => {
   router.push('/home')
@@ -24,7 +26,15 @@ const goArchive = () => {
   router.push('/archive')
 }
 
-const logout = () => {
+const goMailbox = () => {
+    router.push('/mailbox')
+  }
+
+  const goMoments = () => {
+    router.push('/moments')
+  }
+
+  const logout = () => {
   sessionStorage.removeItem('starryEntry')
   router.push('/')
 }
@@ -54,6 +64,28 @@ const handleAdminLogout = () => {
   logoutAdmin()
 }
 
+const openClearModal = () => {
+  showClearModal.value = true
+}
+
+const closeClearModal = () => {
+  showClearModal.value = false
+}
+
+const handleClearAllData = async () => {
+  isClearing.value = true
+  const result = await clearAllData()
+  isClearing.value = false
+  
+  if (result.success) {
+    alert('所有数据已清除 ✨')
+    showClearModal.value = false
+    router.push('/home')
+  } else {
+    alert(`清除数据失败：${result.error || '未知错误'}`)
+  }
+}
+
 onMounted(() => {
   checkAdmin()
 })
@@ -69,7 +101,7 @@ onMounted(() => {
       >
         <Sparkles class="w-5 h-5 text-warm-400 group-hover:text-warm-300 transition-colors" />
         <span class="font-serif text-warm-100 tracking-wider text-sm hidden sm:inline">
-          小提星空
+          彤彤星空
         </span>
       </button>
       
@@ -97,6 +129,28 @@ onMounted(() => {
           <span class="text-sm hidden sm:inline">时光留声</span>
         </button>
 
+        <button
+          @click="goMailbox"
+          class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
+          :class="route.path === '/mailbox' 
+            ? 'bg-warm-500/20 text-warm-300' 
+            : 'text-night-400 hover:text-warm-300 hover:bg-white/5'"
+        >
+          <Mail class="w-4 h-4" />
+          <span class="text-sm hidden sm:inline">时光信箱</span>
+        </button>
+
+        <button
+          @click="goMoments"
+          class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
+          :class="route.path === '/moments' 
+            ? 'bg-warm-500/20 text-warm-300' 
+            : 'text-night-400 hover:text-warm-300 hover:bg-white/5'"
+        >
+          <Star class="w-4 h-4" />
+          <span class="text-sm hidden sm:inline">流星小记</span>
+        </button>
+
         <!-- 管理员上传按钮 -->
         <button
           v-if="isAdmin"
@@ -105,6 +159,16 @@ onMounted(() => {
         >
           <Plus class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">上传新故事</span>
+        </button>
+
+        <!-- 清除数据按钮 -->
+        <button
+          v-if="isAdmin"
+          @click="openClearModal"
+          class="flex items-center gap-2 px-3 py-2 rounded-xl text-red-400/80 hover:text-red-400 hover:bg-red-500/10 transition-all duration-300"
+          title="清除所有数据"
+        >
+          <Trash2 class="w-4 h-4" />
         </button>
 
         <!-- 管理员入口/退出 -->
@@ -177,6 +241,52 @@ onMounted(() => {
               class="w-full py-3 rounded-2xl bg-gradient-to-r from-warm-500 to-warm-600 text-white font-medium tracking-wider hover:from-warm-400 hover:to-warm-500 transition-all duration-300 hover:shadow-warm-glow"
             >
               进入管理模式
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 清除数据确认弹窗 -->
+    <Teleport to="body">
+      <div 
+        v-if="showClearModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-6"
+        @click.self="closeClearModal"
+      >
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        <div class="relative glass rounded-3xl p-8 w-full max-w-sm animate-fade-in">
+          <button
+            @click="closeClearModal"
+            class="absolute top-4 right-4 text-night-400 hover:text-warm-300 transition-colors"
+          >
+            <X class="w-5 h-5" />
+          </button>
+          
+          <div class="text-center mb-6">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <AlertTriangle class="w-8 h-8 text-red-400" />
+            </div>
+            <h3 class="font-serif text-xl text-warm-100 mb-2">清除所有数据</h3>
+            <p class="text-night-400 text-sm">此操作将删除所有故事、信件和评论</p>
+            <p class="text-red-400/80 text-xs mt-2">⚠️ 此操作无法撤销，请谨慎操作</p>
+          </div>
+          
+          <div class="space-y-4">
+            <button
+              @click="handleClearAllData"
+              :disabled="isClearing"
+              class="w-full py-3 rounded-2xl bg-gradient-to-r from-red-500 to-red-600 text-white font-medium tracking-wider hover:from-red-400 hover:to-red-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span v-if="isClearing">清除中...</span>
+              <span v-else>确认清除所有数据</span>
+            </button>
+            
+            <button
+              @click="closeClearModal"
+              class="w-full py-3 rounded-2xl bg-night-800/50 text-night-300 font-medium hover:bg-night-800 transition-all duration-300"
+            >
+              取消
             </button>
           </div>
         </div>

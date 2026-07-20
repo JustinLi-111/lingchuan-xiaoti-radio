@@ -1,5 +1,5 @@
 -- ============================================
--- 小提星空广播站 - Supabase 数据库建表 SQL
+-- 彤彤星空广播站 - Supabase 数据库建表 SQL
 -- ============================================
 -- 请在 Supabase 控制台的 SQL Editor 中执行以下语句
 
@@ -44,9 +44,21 @@ CREATE POLICY "Allow public read comments" ON comments
 CREATE POLICY "Allow public insert comments" ON comments
     FOR INSERT WITH CHECK (true);
 
--- 注意：stories 的插入和删除需要管理员权限
--- 管理员通过 Supabase Dashboard 直接操作即可
--- 或者你可以创建一个 admin 用户并设置相应策略
+-- 允许管理员删除故事（使用服务端角色）
+CREATE POLICY "Allow admin delete stories" ON stories
+    FOR DELETE USING (true);
+
+-- 允许管理员删除评论
+CREATE POLICY "Allow admin delete comments" ON comments
+    FOR DELETE USING (true);
+
+-- 允许管理员插入故事
+CREATE POLICY "Allow admin insert stories" ON stories
+    FOR INSERT WITH CHECK (true);
+
+-- 允许管理员更新故事
+CREATE POLICY "Allow admin update stories" ON stories
+    FOR UPDATE USING (true) WITH CHECK (true);
 
 -- 5. 创建音频文件存储桶
 -- 在 Supabase Storage 中手动创建名为 'audio' 的存储桶

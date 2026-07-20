@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Lock, Sparkles } from 'lucide-vue-next'
 import StarryBackground from '@/components/StarryBackground.vue'
-const ENTRY_PASSWORD = 'xiaoti'
+const ENTRY_PASSWORD = import.meta.env.VITE_ENTRY_PASSWORD || 'zhulaoshi'
 
 const router = useRouter()
 const password = ref('')
@@ -56,7 +56,7 @@ onMounted(() => {
         <div class="flex items-center justify-center gap-3 mb-4">
           <Sparkles class="w-6 h-6 text-warm-300 animate-pulse" />
           <h1 class="font-serif text-3xl font-light text-warm-100 tracking-widest">
-            小提星空广播站
+            彤彤星空广播站
           </h1>
           <Sparkles class="w-6 h-6 text-warm-300 animate-pulse" />
         </div>
@@ -104,15 +104,12 @@ onMounted(() => {
           </button>
         </div>
         
-        <p class="text-center text-night-500 text-xs mt-6">
-          提示：是你的名字呀 ✨
-        </p>
       </div>
       
       <!-- 底部装饰 -->
       <div class="text-center mt-10">
         <p class="text-night-600 text-xs tracking-widest">
-          · 每晚 22:00，为你点亮一颗星 ·
+          · 每晚 23:00，为你点亮一颗星 ·
         </p>
       </div>
     </div>

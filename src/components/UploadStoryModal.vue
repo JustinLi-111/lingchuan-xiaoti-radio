@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { X, Upload, Music, FileAudio, Check } from 'lucide-vue-next'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
+import { supabase } from '@/lib/supabase'
 
 const props = defineProps<{
   visible: boolean
@@ -113,9 +114,31 @@ const handleSubmit = async () => {
   try {
     const duration = await getAudioDuration()
     
+    // 生成纯英文文件名，避免中文导致上传失败
+    const timestamp = Date.now()
+    const ext = audioFileName.value.split('.').pop() || 'm4a'
+    const fileName = `story-${timestamp}.${ext}`
+    
+    const { error: uploadError } = await supabase.storage
+      .from('audio')
+      .upload(fileName, audioFile.value, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+    
+    if (uploadError) {
+      throw uploadError
+    }
+    
+    const { data: publicUrlData } = supabase.storage
+      .from('audio')
+      .getPublicUrl(fileName)
+    
+    const publicUrl = publicUrlData.publicUrl
+    
     addStory({
       title: title.value.trim(),
-      audioUrl: audioUrl.value,
+      audioUrl: publicUrl,
       audioFileName: audioFileName.value,
       duration,
       goodnightText: goodnightText.value.trim(),
@@ -127,9 +150,9 @@ const handleSubmit = async () => {
       emit('success')
       emit('close')
     }, 1500)
-  } catch (error) {
+  } catch (error: any) {
     console.error('上传失败:', error)
-    alert('上传失败了，请重试~')
+    alert(`上传失败了，请重试~ ${error.message || ''}`)
   } finally {
     isSubmitting.value = false
   }

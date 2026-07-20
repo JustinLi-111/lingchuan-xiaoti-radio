@@ -28,7 +28,30 @@ export interface Comment {
   createdAt: string
 }
 
+export interface Letter {
+  id: number
+  title: string
+  content: string
+  created_at: string
+  read_count: number
+  // 前端兼容字段
+  date: string
+}
+
+export interface LetterComment {
+  id: number
+  letter_id: number
+  selected_text: string
+  comment: string
+  created_at: string
+  // 前端兼容字段
+  letterId: number
+  selectedText: string
+  createdAt: string
+}
+
 const stories = ref<Story[]>([])
+const letters = ref<Letter[]>([])
 const isAdmin = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -59,6 +82,34 @@ const mapComment = (dbComment: any): Comment => {
   return {
     ...dbComment,
     storyId: dbComment.story_id,
+    createdAt: new Date(dbComment.created_at).toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  }
+}
+
+// 将数据库字段映射为前端兼容格式
+const mapLetter = (dbLetter: any): Letter => {
+  return {
+    ...dbLetter,
+    date: new Date(dbLetter.created_at).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).replace(/\//g, '-'),
+  }
+}
+
+// 将数据库字段映射为前端兼容格式
+const mapLetterComment = (dbComment: any): LetterComment => {
+  return {
+    ...dbComment,
+    letterId: dbComment.letter_id,
+    selectedText: dbComment.selected_text,
     createdAt: new Date(dbComment.created_at).toLocaleString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
@@ -235,9 +286,217 @@ export function useSupabaseStories() {
     isAdmin.value = false
   }
 
+  // 获取所有信件
+  const fetchLetters = async () => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('letters')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+
+      letters.value = data.map(mapLetter)
+    } catch (err: any) {
+      console.error('获取信件失败:', err)
+      error.value = err.message
+      const stored = localStorage.getItem('starry_letters')
+      if (stored) {
+        letters.value = JSON.parse(stored)
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 获取指定信件的评论
+  const fetchLetterComments = async (letterId: number): Promise<LetterComment[]> => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('letter_comments')
+        .select('*')
+        .eq('letter_id', letterId)
+        .order('created_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+
+      return data.map(mapLetterComment)
+    } catch (err: any) {
+      console.error('获取信件评论失败:', err)
+      const stored = localStorage.getItem(`letter_comments-${letterId}`)
+      return stored ? JSON.parse(stored) : []
+    }
+  }
+
+  // 提交信件评论（选中文字评论）
+  const submitLetterComment = async (letterId: number, selectedText: string, comment: string): Promise<LetterComment | null> => {
+    try {
+      const { data, error: insertError } = await supabase
+        .from('letter_comments')
+        .insert({
+          letter_id: letterId,
+          selected_text: selectedText.trim(),
+          comment: comment.trim(),
+        })
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+
+      return mapLetterComment(data)
+    } catch (err: any) {
+      console.error('提交信件评论失败:', err)
+      const letterComment: LetterComment = {
+        id: Date.now(),
+        letter_id: letterId,
+        letterId,
+        selected_text: selectedText.trim(),
+        selectedText: selectedText.trim(),
+        comment: comment.trim(),
+        created_at: new Date().toISOString(),
+        createdAt: new Date().toLocaleString('zh-CN'),
+      }
+      const stored = localStorage.getItem(`letter_comments-${letterId}`)
+      const comments = stored ? JSON.parse(stored) : []
+      comments.unshift(letterComment)
+      localStorage.setItem(`letter_comments-${letterId}`, JSON.stringify(comments))
+      return letterComment
+    }
+  }
+
+  // 添加新信件
+  const addLetter = async (title: string, content: string): Promise<Letter | null> => {
+    try {
+      const { data, error: insertError } = await supabase
+        .from('letters')
+        .insert({
+          title: title.trim(),
+          content: content.trim(),
+          read_count: 0,
+        })
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+
+      const newLetter = mapLetter(data)
+      letters.value.unshift(newLetter)
+      return newLetter
+    } catch (err: any) {
+      console.error('添加信件失败:', err)
+      const letter: Letter = {
+        id: Date.now(),
+        title: title.trim(),
+        content: content.trim(),
+        created_at: new Date().toISOString(),
+        read_count: 0,
+        date: new Date().toLocaleDateString('zh-CN').replace(/\//g, '-'),
+      }
+      letters.value.unshift(letter)
+      const stored = localStorage.getItem('starry_letters')
+      const storedLetters = stored ? JSON.parse(stored) : []
+      storedLetters.unshift(letter)
+      localStorage.setItem('starry_letters', JSON.stringify(storedLetters))
+      return letter
+    }
+  }
+
+  // 更新阅读次数
+  const incrementReadCount = async (letterId: number) => {
+    try {
+      await supabase
+        .from('letters')
+        .update({ read_count: supabase.rpc('increment', { value: 1 }) })
+        .eq('id', letterId)
+    } catch (err: any) {
+      console.error('更新阅读次数失败:', err)
+    }
+  }
+
+  // 删除信件（管理员功能）
+  const deleteLetter = async (id: number) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('letters')
+        .delete()
+        .eq('id', id)
+
+      if (deleteError) throw deleteError
+
+      letters.value = letters.value.filter(l => l.id !== id)
+    } catch (err: any) {
+      console.error('删除信件失败:', err)
+      letters.value = letters.value.filter(l => l.id !== id)
+      const stored = localStorage.getItem('starry_letters')
+      if (stored) {
+        const storedLetters = JSON.parse(stored).filter((l: Letter) => l.id !== id)
+        localStorage.setItem('starry_letters', JSON.stringify(storedLetters))
+      }
+    }
+  }
+
+  // 清除所有数据（管理员功能）
+  const clearAllData = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // 删除所有信件评论
+      const { error: deleteLetterCommentsError } = await supabase
+        .from('letter_comments')
+        .delete()
+        .neq('id', 0)
+
+      if (deleteLetterCommentsError) throw new Error(`删除信件评论失败: ${deleteLetterCommentsError.message}`)
+
+      // 删除所有信件
+      const { error: deleteLettersError } = await supabase
+        .from('letters')
+        .delete()
+        .neq('id', 0)
+
+      if (deleteLettersError) throw new Error(`删除信件失败: ${deleteLettersError.message}`)
+
+      // 删除所有评论
+      const { error: deleteCommentsError } = await supabase
+        .from('comments')
+        .delete()
+        .neq('id', 0)
+
+      if (deleteCommentsError) throw new Error(`删除评论失败: ${deleteCommentsError.message}`)
+
+      // 删除所有故事
+      const { error: deleteStoriesError } = await supabase
+        .from('stories')
+        .delete()
+        .neq('id', 0)
+
+      if (deleteStoriesError) throw new Error(`删除故事失败: ${deleteStoriesError.message}`)
+
+      // 清除本地缓存
+      stories.value = []
+      letters.value = []
+      localStorage.removeItem('starry_stories')
+      localStorage.removeItem('starry_letters')
+      
+      const keys = Object.keys(localStorage)
+      keys.forEach(key => {
+        if (key.startsWith('comments-') || key.startsWith('letter_comments-')) {
+          localStorage.removeItem(key)
+        }
+      })
+
+      return { success: true }
+    } catch (err: any) {
+      console.error('清除所有数据失败:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
   // 初始化
   const init = async () => {
     await fetchStories()
+    await fetchLetters()
     checkAdmin()
   }
 
@@ -247,6 +506,7 @@ export function useSupabaseStories() {
 
   return {
     stories,
+    letters,
     isAdmin,
     loading,
     error,
@@ -259,6 +519,13 @@ export function useSupabaseStories() {
     checkAdmin,
     loginAdmin,
     logoutAdmin,
+    fetchLetters,
+    fetchLetterComments,
+    submitLetterComment,
+    addLetter,
+    deleteLetter,
+    clearAllData,
+    incrementReadCount,
     init,
   }
 }

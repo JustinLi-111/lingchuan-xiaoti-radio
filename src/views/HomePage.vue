@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { Moon, ChevronDown, Plus, Sparkles } from 'lucide-vue-next'
 import StarryBackground from '@/components/StarryBackground.vue'
 import NavBar from '@/components/NavBar.vue'
@@ -10,12 +10,20 @@ import UploadStoryModal from '@/components/UploadStoryModal.vue'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 
 const router = useRouter()
+const route = useRoute()
 const { stories, latestStory, isAdmin, fetchStories, checkAdmin, init, loading } = useSupabaseStories()
 
 const showContent = ref(false)
 const showUploadModal = ref(false)
 
-const currentStory = computed(() => latestStory.value)
+const currentStory = computed(() => {
+  const storyId = route.query.storyId
+  if (storyId) {
+    const story = stories.value.find(s => s.id === Number(storyId))
+    if (story) return story
+  }
+  return latestStory.value
+})
 
 const scrollToComments = () => {
   const commentsSection = document.getElementById('comments-section')
@@ -115,7 +123,7 @@ onMounted(async () => {
               "{{ currentStory.goodnightText }}"
             </p>
             <div class="mt-6">
-              <span class="text-night-400 text-sm">—— 小提</span>
+              <span class="text-night-400 text-sm">—— 彤彤</span>
             </div>
           </div>
         </section>
@@ -140,7 +148,7 @@ onMounted(async () => {
       <!-- 页脚 -->
       <footer class="max-w-4xl mx-auto pt-8 pb-4 text-center">
         <p class="text-night-600 text-xs tracking-widest">
-          小提星空广播站 · 每晚都在
+          彤彤星空广播站 · 每晚都在
         </p>
         <p class="text-night-700 text-xs mt-2">
           愿你每晚都有好梦 🌙

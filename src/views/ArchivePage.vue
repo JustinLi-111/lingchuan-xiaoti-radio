@@ -16,7 +16,7 @@ const showContent = ref(false)
 const showUploadModal = ref(false)
 
 const handlePlay = (story: Story) => {
-  router.push('/home')
+  router.push({ path: '/home', query: { storyId: story.id } })
 }
 
 const openUploadModal = () => {
@@ -160,7 +160,7 @@ onMounted(async () => {
       <!-- 页脚 -->
       <footer class="max-w-4xl mx-auto pt-8 pb-4 text-center">
         <p class="text-night-600 text-xs tracking-widest">
-          小提星空广播站 · 每晚都在
+          彤彤星空广播站 · 每晚都在
         </p>
         <p class="text-night-700 text-xs mt-2">
           愿你每晚都有好梦 🌙
