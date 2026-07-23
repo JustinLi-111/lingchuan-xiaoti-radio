@@ -17,6 +17,9 @@ const adminPassword = ref('')
 const adminError = ref('')
 const showClearModal = ref(false)
 const isClearing = ref(false)
+const clearPassword = ref('')
+const clearPasswordError = ref('')
+const SECONDARY_PASSWORD = '520LJL0913111'
 
 const goHome = () => {
   router.push('/home')
@@ -65,6 +68,8 @@ const handleAdminLogout = () => {
 }
 
 const openClearModal = () => {
+  clearPassword.value = ''
+  clearPasswordError.value = ''
   showClearModal.value = true
 }
 
@@ -73,6 +78,14 @@ const closeClearModal = () => {
 }
 
 const handleClearAllData = async () => {
+  if (clearPassword.value !== SECONDARY_PASSWORD) {
+    clearPasswordError.value = '二级密码错误，请重试'
+    setTimeout(() => {
+      clearPasswordError.value = ''
+    }, 2000)
+    return
+  }
+
   isClearing.value = true
   const result = await clearAllData()
   isClearing.value = false
@@ -273,6 +286,18 @@ onMounted(() => {
           </div>
           
           <div class="space-y-4">
+            <input
+              v-model="clearPassword"
+              type="password"
+              placeholder="请输入二级密码"
+              class="w-full px-5 py-4 rounded-2xl bg-night-800/50 border border-night-700/50 text-warm-50 placeholder-night-500 focus:outline-none focus:border-warm-500/50 focus:ring-2 focus:ring-warm-500/20 transition-all duration-300 text-center"
+              @keyup.enter="handleClearAllData"
+            />
+            
+            <p v-if="clearPasswordError" class="text-center text-red-400/80 text-sm">
+              {{ clearPasswordError }}
+            </p>
+            
             <button
               @click="handleClearAllData"
               :disabled="isClearing"

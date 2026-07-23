@@ -23,6 +23,8 @@ export interface Comment {
   story_id: number
   content: string
   created_at: string
+  author: string
+  avatar: string
   // 前端兼容字段
   storyId: number
   createdAt: string
@@ -36,6 +38,8 @@ export interface Letter {
   read_count: number
   // 前端兼容字段
   date: string
+  author: string
+  avatar: string
 }
 
 export interface LetterComment {
@@ -44,6 +48,8 @@ export interface LetterComment {
   selected_text: string
   comment: string
   created_at: string
+  author: string
+  avatar: string
   // 前端兼容字段
   letterId: number
   selectedText: string
@@ -175,13 +181,15 @@ export function useSupabaseStories() {
   }
 
   // 提交评论到树洞
-  const submitComment = async (storyId: number, content: string): Promise<Comment | null> => {
+  const submitComment = async (storyId: number, content: string, author: string = '彤彤', avatar: string = ''): Promise<Comment | null> => {
     try {
       const { data, error: insertError } = await supabase
         .from('comments')
         .insert({
           story_id: storyId,
           content: content.trim(),
+          author,
+          avatar,
         })
         .select()
         .single()
@@ -199,6 +207,8 @@ export function useSupabaseStories() {
         content: content.trim(),
         created_at: new Date().toISOString(),
         createdAt: new Date().toLocaleString('zh-CN'),
+        author,
+        avatar,
       }
       const stored = localStorage.getItem(`comments-${storyId}`)
       const comments = stored ? JSON.parse(stored) : []
@@ -332,7 +342,7 @@ export function useSupabaseStories() {
   }
 
   // 提交信件评论（选中文字评论）
-  const submitLetterComment = async (letterId: number, selectedText: string, comment: string): Promise<LetterComment | null> => {
+  const submitLetterComment = async (letterId: number, selectedText: string, comment: string, author: string = '彤彤', avatar: string = ''): Promise<LetterComment | null> => {
     try {
       const { data, error: insertError } = await supabase
         .from('letter_comments')
@@ -340,6 +350,8 @@ export function useSupabaseStories() {
           letter_id: letterId,
           selected_text: selectedText.trim(),
           comment: comment.trim(),
+          author,
+          avatar,
         })
         .select()
         .single()
@@ -358,6 +370,8 @@ export function useSupabaseStories() {
         comment: comment.trim(),
         created_at: new Date().toISOString(),
         createdAt: new Date().toLocaleString('zh-CN'),
+        author,
+        avatar,
       }
       const stored = localStorage.getItem(`letter_comments-${letterId}`)
       const comments = stored ? JSON.parse(stored) : []
@@ -368,7 +382,7 @@ export function useSupabaseStories() {
   }
 
   // 添加新信件
-  const addLetter = async (title: string, content: string): Promise<Letter | null> => {
+  const addLetter = async (title: string, content: string, author: string = '彤彤', avatar: string = ''): Promise<Letter | null> => {
     try {
       const { data, error: insertError } = await supabase
         .from('letters')
@@ -376,6 +390,8 @@ export function useSupabaseStories() {
           title: title.trim(),
           content: content.trim(),
           read_count: 0,
+          author,
+          avatar,
         })
         .select()
         .single()
@@ -394,6 +410,8 @@ export function useSupabaseStories() {
         created_at: new Date().toISOString(),
         read_count: 0,
         date: new Date().toLocaleDateString('zh-CN').replace(/\//g, '-'),
+        author,
+        avatar,
       }
       letters.value.unshift(letter)
       const stored = localStorage.getItem('starry_letters')

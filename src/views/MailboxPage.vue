@@ -13,9 +13,7 @@ const { letters, fetchLetters, addLetter, init } = useSupabaseStories();
 const showContent = ref(false);
 const showUploadModal = ref(false);
 const selectedLetter = ref<Letter | null>(null);
-const cardRect = ref<DOMRect | null>(null);
-const handleOpenLetter = (letter: Letter, rect: DOMRect) => {
- cardRect.value = rect;
+const handleOpenLetter = (letter: Letter) => {
  selectedLetter.value = letter;
 };
 const closeLetterDetail = () => {
@@ -162,7 +160,6 @@ onMounted(async () => {
     <LetterDetail 
       v-if="selectedLetter"
       :letter="selectedLetter"
-      :card-rect="cardRect"
       @close="closeLetterDetail"
       @delete="handleLetterDelete"
     />

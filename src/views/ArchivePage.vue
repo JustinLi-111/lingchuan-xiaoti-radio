@@ -148,7 +148,7 @@ onMounted(async () => {
         <div class="text-center">
           <div class="inline-block glass rounded-2xl px-8 py-6">
             <p class="text-night-300 text-sm leading-relaxed">
-              每晚 22:00，会有一颗新的星星为你点亮
+              每晚 23:00，会有一颗新的星星为你点亮
             </p>
             <p class="text-night-500 text-xs mt-2">
               敬请期待明天的故事 ✨
@@ -174,5 +174,80 @@ onMounted(async () => {
       @close="closeUploadModal"
       @success="handleUploadSuccess"
     />
+    
+    <!-- 隐藏彩蛋小骨头 -->
+    <button
+      @click="router.push('/secret-garden')"
+      class="hidden-star-easter-egg"
+      title="点击看看"
+    >
+      ✦
+    </button>
   </div>
 </template>
+
+<style scoped>
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.5s ease-out;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.hidden-star-easter-egg {
+  position: fixed;
+  bottom: 80px;
+  right: 40px;
+  font-size: 14px;
+  color: rgba(245, 166, 35, 0.3);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  z-index: 40;
+  animation: twinkle 3s ease-in-out infinite;
+  transform: rotate(15deg);
+}
+
+.hidden-star-easter-egg:hover {
+  color: rgba(245, 166, 35, 0.8);
+  animation: none;
+  transform: rotate(15deg) scale(1.3);
+  transition: all 0.3s ease;
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: rotate(15deg) scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: rotate(15deg) scale(1.1);
+  }
+}
+</style>

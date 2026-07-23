@@ -8,16 +8,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'open', letter: Letter, rect: DOMRect): void
+  (e: 'open', letter: Letter): void
 }>()
 
-const cardRef = ref<HTMLElement | null>(null)
-
 const handleClick = () => {
-  if (cardRef.value) {
-    const rect = cardRef.value.getBoundingClientRect()
-    emit('open', props.letter, rect)
-  }
+  emit('open', props.letter)
 }
 </script>
 
@@ -40,6 +35,15 @@ const handleClick = () => {
       </div>
       
       <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <img
+            v-if="letter.avatar"
+            :src="letter.avatar"
+            :alt="letter.author"
+            class="w-5 h-5 rounded-full object-cover"
+          />
+          <span v-else class="text-warm-400 text-xs">{{ letter.author || '彤彤' }}</span>
+        </div>
         <p class="text-warm-400/80 text-xs tracking-wider mb-1">
           {{ letter.date }}
         </p>

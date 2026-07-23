@@ -8,13 +8,16 @@ const props = defineProps<{
   storyId: number
 }>()
 
-const { fetchComments, submitComment: submitToSupabase } = useSupabaseStories()
+const { fetchComments, submitComment: submitToSupabase, isAdmin } = useSupabaseStories()
 
 const comments = ref<Comment[]>([])
 const newComment = ref('')
 const isSubmitting = ref(false)
 const showSuccess = ref(false)
 const commentsContainerRef = ref<HTMLElement | null>(null)
+
+const LINGCHUAN_AVATAR = '/avatar-lingchuan.jpg'
+const TONGTONG_AVATAR = '/avatar-tongtong.jpg'
 
 const loadComments = async () => {
   comments.value = await fetchComments(props.storyId)
@@ -25,7 +28,9 @@ const handleSubmit = async () => {
   
   isSubmitting.value = true
   
-  const result = await submitToSupabase(props.storyId, newComment.value.trim())
+  const author = isAdmin.value ? '灵川' : '彤彤'
+  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+  const result = await submitToSupabase(props.storyId, newComment.value.trim(), author, avatar)
   
   if (result) {
     comments.value.unshift(result)
@@ -116,14 +121,18 @@ onMounted(() => {
       >
         <div class="flex items-start gap-4">
           <!-- 头像 -->
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-warm-400 to-warm-600 flex items-center justify-center flex-shrink-0">
-            <span class="text-white text-sm">✨</span>
+          <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border border-warm-500/30">
+            <img
+              :src="comment.avatar || TONGTONG_AVATAR"
+              :alt="comment.author"
+              class="w-full h-full object-cover"
+            />
           </div>
           
           <!-- 评论内容 -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-2">
-              <span class="text-warm-200 text-sm font-medium">小星星</span>
+              <span class="text-warm-200 text-sm font-medium">{{ comment.author || '彤彤' }}</span>
               <span class="text-night-500 text-xs">{{ comment.createdAt }}</span>
             </div>
             <p class="text-night-200 text-sm leading-relaxed break-words">

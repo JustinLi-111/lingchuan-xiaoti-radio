@@ -123,7 +123,7 @@ onMounted(async () => {
               "{{ currentStory.goodnightText }}"
             </p>
             <div class="mt-6">
-              <span class="text-night-400 text-sm">—— 彤彤</span>
+              <span class="text-night-400 text-sm">—— 灵川</span>
             </div>
           </div>
         </section>

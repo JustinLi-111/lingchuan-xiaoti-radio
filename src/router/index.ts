@@ -4,6 +4,7 @@ import HomePage from '@/views/HomePage.vue'
 import ArchivePage from '@/views/ArchivePage.vue'
 import MailboxPage from '@/views/MailboxPage.vue'
 import MomentsPage from '@/views/MomentsPage.vue'
+import SecretGardenPage from '@/views/SecretGardenPage.vue'
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     path: '/moments',
     name: 'moments',
     component: MomentsPage,
+  },
+  {
+    path: '/secret-garden',
+    name: 'secret-garden',
+    component: SecretGardenPage,
   },
 ]
 

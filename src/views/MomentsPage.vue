@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Star, Plus, Image, X, Trash2, Sparkles } from 'lucide-vue-next'
+import { Star, Plus, Image, X, Trash2, Sparkles, MessageCircle } from 'lucide-vue-next'
 import StarryBackground from '@/components/StarryBackground.vue'
 import NavBar from '@/components/NavBar.vue'
 import { useMoments } from '@/composables/useMoments'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 
 const router = useRouter()
-const { moments, loading, createMoment, deleteMoment } = useMoments()
+const { moments, loading, createMoment, deleteMoment, addComment, deleteComment } = useMoments()
 const { isAdmin, checkAdmin } = useSupabaseStories()
 
 const showContent = ref(false)
@@ -17,6 +17,13 @@ const content = ref('')
 const selectedImages = ref<File[]>([])
 const imagePreviews = ref<string[]>([])
 const isUploading = ref(false)
+const previewImage = ref('')
+const showPreviewModal = ref(false)
+const commentInputs = ref<Record<number, string>>({})
+const isSubmittingComment = ref<Record<number, boolean>>({})
+
+const LINGCHUAN_AVATAR = '/avatar-lingchuan.jpg'
+const TONGTONG_AVATAR = '/avatar-tongtong.jpg'
 
 const handleImageSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -40,6 +47,15 @@ const removeImage = (index: number) => {
   imagePreviews.value.splice(index, 1)
 }
 
+const openImagePreview = (url: string) => {
+  previewImage.value = url
+  showPreviewModal.value = true
+}
+
+const closeImagePreview = () => {
+  showPreviewModal.value = false
+}
+
 const handleCreate = async () => {
   if (!content.value.trim() && selectedImages.value.length === 0) {
     alert('请输入内容或上传图片')
@@ -47,7 +63,9 @@ const handleCreate = async () => {
   }
 
   isUploading.value = true
-  const result = await createMoment(content.value, selectedImages.value)
+  const author = isAdmin.value ? '灵川' : '彤彤'
+  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+  const result = await createMoment(content.value, selectedImages.value, author, avatar)
   isUploading.value = false
 
   if (result) {
@@ -63,6 +81,27 @@ const handleCreate = async () => {
 const handleDelete = async (id: number) => {
   if (confirm('确定要删除这条动态吗？')) {
     await deleteMoment(id)
+  }
+}
+
+const handleCommentSubmit = async (momentId: number) => {
+  const commentContent = commentInputs.value[momentId]
+  if (!commentContent || !commentContent.trim()) return
+
+  isSubmittingComment.value[momentId] = true
+  const author = isAdmin.value ? '灵川' : '彤彤'
+  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+  const result = await addComment(momentId, commentContent, author, avatar)
+  isSubmittingComment.value[momentId] = false
+
+  if (result) {
+    commentInputs.value[momentId] = ''
+  }
+}
+
+const handleDeleteComment = async (momentId: number, commentId: number) => {
+  if (confirm('确定要删除这条评论吗？')) {
+    await deleteComment(momentId, commentId)
   }
 }
 
@@ -149,11 +188,15 @@ onMounted(async () => {
             <!-- 头部 -->
             <div class="px-6 py-4 flex items-center justify-between border-b border-night-700/30">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-warm-400 to-warm-600 flex items-center justify-center">
-                  <span class="text-white font-serif text-sm">星</span>
+                <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-warm-500/30">
+                  <img
+                    :src="moment.avatar || '/avatar-tongtong.jpg'"
+                    :alt="moment.author"
+                    class="w-full h-full object-cover"
+                  />
                 </div>
                 <div>
-                  <p class="text-warm-100 text-sm font-medium">彤彤</p>
+                  <p class="text-warm-100 text-sm font-medium">{{ moment.author || '彤彤' }}</p>
                   <p class="text-night-500 text-xs">{{ moment.date }}</p>
                 </div>
               </div>
@@ -176,7 +219,7 @@ onMounted(async () => {
               <!-- 图片区域 - 根据图片数量动态布局 -->
               <div v-if="moment.image_urls && moment.image_urls.length > 0">
                 <!-- 1张图片 - 大图展示 -->
-                <div v-if="moment.image_urls.length === 1" class="rounded-2xl overflow-hidden">
+                <div v-if="moment.image_urls.length === 1" class="rounded-2xl overflow-hidden cursor-pointer" @click="openImagePreview(moment.image_urls[0])">
                   <img
                     :src="moment.image_urls[0]"
                     alt="动态图片"
@@ -192,7 +235,8 @@ onMounted(async () => {
                     :key="index"
                     :src="url"
                     alt="动态图片"
-                    class="w-full h-48 object-cover hover:scale-[1.02] transition-transform duration-500"
+                    class="w-full h-48 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
+                    @click="openImagePreview(url)"
                   />
                 </div>
 
@@ -201,18 +245,21 @@ onMounted(async () => {
                   <img
                     :src="moment.image_urls[0]"
                     alt="动态图片"
-                    class="w-full h-48 object-cover hover:scale-[1.02] transition-transform duration-500"
+                    class="w-full h-48 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
+                    @click="openImagePreview(moment.image_urls[0])"
                   />
                   <div class="grid grid-cols-2 gap-2 mt-2">
                     <img
                       :src="moment.image_urls[1]"
                       alt="动态图片"
-                      class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500"
+                      class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
+                      @click="openImagePreview(moment.image_urls[1])"
                     />
                     <img
                       :src="moment.image_urls[2]"
                       alt="动态图片"
-                      class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500"
+                      class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
+                      @click="openImagePreview(moment.image_urls[2])"
                     />
                   </div>
                 </div>
@@ -224,7 +271,8 @@ onMounted(async () => {
                     :key="index"
                     :src="url"
                     alt="动态图片"
-                    class="w-full h-32 object-cover hover:scale-[1.02] transition-transform duration-500"
+                    class="w-full h-32 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
+                    @click="openImagePreview(url)"
                   />
                 </div>
 
@@ -235,9 +283,64 @@ onMounted(async () => {
                     :key="index"
                     :src="url"
                     alt="动态图片"
-                    class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500"
+                    class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
+                    @click="openImagePreview(url)"
                   />
                 </div>
+              </div>
+            </div>
+
+            <!-- 评论区 -->
+            <div v-if="moment.comments && moment.comments.length > 0" class="px-6 py-3 border-t border-night-700/30">
+              <div class="space-y-3">
+                <div
+                  v-for="comment in moment.comments"
+                  :key="comment.id"
+                  class="flex items-start gap-3"
+                >
+                  <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                    <img
+                      :src="comment.avatar || '/avatar-tongtong.jpg'"
+                      :alt="comment.author"
+                      class="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="text-warm-300 text-xs font-medium">{{ comment.author || '彤彤' }}</span>
+                      <span class="text-night-600 text-xs">{{ comment.date }}</span>
+                      <button
+                        v-if="isAdmin"
+                        @click="handleDeleteComment(moment.id, comment.id)"
+                        class="ml-auto p-1 text-night-600 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 class="w-3 h-3" />
+                      </button>
+                    </div>
+                    <p class="text-night-300 text-sm mt-1">{{ comment.content }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 评论输入框 -->
+            <div class="px-6 py-3 border-t border-night-700/30">
+              <div class="flex items-center gap-3">
+                <input
+                  :key="moment.id"
+                  v-model="commentInputs[moment.id]"
+                  type="text"
+                  :placeholder="`写下你的评论...`"
+                  class="flex-1 px-4 py-2 rounded-full bg-night-800/50 border border-night-700/30 text-warm-50 placeholder-night-500 text-sm focus:outline-none focus:border-warm-500/50 focus:ring-2 focus:ring-warm-500/20 transition-all"
+                  @keyup.enter="handleCommentSubmit(moment.id)"
+                />
+                <button
+                  @click="handleCommentSubmit(moment.id)"
+                  :disabled="!commentInputs[moment.id]?.trim() || isSubmittingComment[moment.id]"
+                  class="p-2 rounded-full bg-warm-500/20 text-warm-400 hover:bg-warm-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <MessageCircle class="w-4 h-4" />
+                </button>
               </div>
             </div>
 
@@ -245,6 +348,10 @@ onMounted(async () => {
             <div class="px-6 py-3 bg-night-800/30 flex items-center gap-4 text-night-500 text-xs">
               <span>✨</span>
               <span>记录于 {{ moment.date }}</span>
+              <span v-if="moment.comments && moment.comments.length > 0" class="flex items-center gap-1">
+                <MessageCircle class="w-3 h-3" />
+                {{ moment.comments.length }} 条评论
+              </span>
             </div>
           </div>
         </div>
@@ -257,6 +364,28 @@ onMounted(async () => {
         </p>
       </footer>
     </div>
+
+    <!-- 图片预览弹窗 -->
+    <Teleport to="body">
+      <div
+        v-if="showPreviewModal"
+        class="fixed inset-0 z-50 flex items-center justify-center"
+        @click="closeImagePreview"
+      >
+        <div class="absolute inset-0 bg-black/90" />
+        <button
+          @click="closeImagePreview"
+          class="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+        >
+          <X class="w-6 h-6" />
+        </button>
+        <img
+          :src="previewImage"
+          alt="预览"
+          class="relative z-10 max-w-[90vw] max-h-[90vh] object-contain rounded-xl"
+        />
+      </div>
+    </Teleport>
 
     <!-- 发布动态弹窗 -->
     <Teleport to="body">

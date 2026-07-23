@@ -13,12 +13,15 @@ const emit = defineEmits<{
   (e: 'submit', letter: Letter): void
 }>()
 
-const { addLetter } = useSupabaseStories()
+const { addLetter, isAdmin } = useSupabaseStories()
 
 const title = ref('')
 const content = ref('')
 const isSubmitting = ref(false)
 const showSuccess = ref(false)
+
+const LINGCHUAN_AVATAR = '/avatar-lingchuan.jpg'
+const TONGTONG_AVATAR = '/avatar-tongtong.jpg'
 
 watch(() => props.visible, (val) => {
   if (val) {
@@ -36,7 +39,9 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   
   try {
-    const letter = await addLetter(title.value, content.value)
+    const author = isAdmin.value ? '灵川' : '彤彤'
+    const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+    const letter = await addLetter(title.value, content.value, author, avatar)
     if (letter) {
       showSuccess.value = true
       setTimeout(() => {
