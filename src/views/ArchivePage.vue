@@ -190,7 +190,7 @@ onMounted(async () => {
     <div v-if="showEasterEgg" class="easter-egg-modal" @click="showEasterEgg = false">
       <div class="modal-content" @click.stop>
         <div class="star-icon">✦</div>
-        <p class="easter-text">大王好厉害</p>
+        <p class="easter-text">小华公主好棒你找到这里le！希望你开心快乐，抱抱</p>
         <button @click="showEasterEgg = false" class="close-btn">关闭</button>
       </div>
     </div>
