@@ -20,8 +20,8 @@ const content = ref('')
 const isSubmitting = ref(false)
 const showSuccess = ref(false)
 
-const LINGCHUAN_AVATAR = '/avatar-lingchuan.jpg'
-const TONGTONG_AVATAR = '/avatar-tongtong.jpg'
+const LINGCHUAN_AVATAR = '/f52d1b93b90d9a847ca9761205376327.jpg'
+const TONGTONG_AVATAR = '/微信图片_2026-08-06_121603_195.jpg'
 
 watch(() => props.visible, (val) => {
   if (val) {
@@ -39,7 +39,7 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   
   try {
-    const author = isAdmin.value ? '灵川' : '彤彤'
+    const author = isAdmin.value ? '灵川' : '小华'
     const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
     const letter = await addLetter(title.value, content.value, author, avatar)
     if (letter) {

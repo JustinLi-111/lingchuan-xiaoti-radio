@@ -141,7 +141,7 @@ onMounted(async () => {
       <!-- 页脚 -->
       <footer class="max-w-4xl mx-auto pt-8 pb-4 text-center">
         <p class="text-night-600 text-xs tracking-widest">
-          彤彤星空广播站 · 时光信箱
+          小华星空广播站 · 时光信箱
         </p>
         <p class="text-night-700 text-xs mt-2">
           愿你的每封信都有回音 🌙

@@ -142,8 +142,8 @@ onMounted(() => {
   position: absolute;
   width: 100px;
   height: 2px;
-  background: linear-gradient(90deg, rgba(255, 216, 155, 0.8), transparent);
-  transform: rotate(-45deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 216, 155, 0.8));
+  transform: rotate(45deg);
   opacity: 0;
   animation: shooting 12s ease-in-out infinite;
 }
@@ -151,18 +151,18 @@ onMounted(() => {
 @keyframes shooting {
   0% {
     opacity: 0;
-    transform: translate(0, 0) rotate(-45deg);
+    transform: translate(0, 0) rotate(45deg);
   }
   5% {
     opacity: 1;
   }
   15% {
     opacity: 0;
-    transform: translate(200px, 200px) rotate(-45deg);
+    transform: translate(200px, 200px) rotate(45deg);
   }
   100% {
     opacity: 0;
-    transform: translate(200px, 200px) rotate(-45deg);
+    transform: translate(200px, 200px) rotate(45deg);
   }
 }
 </style>

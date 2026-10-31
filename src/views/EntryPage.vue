@@ -56,7 +56,7 @@ onMounted(() => {
         <div class="flex items-center justify-center gap-3 mb-4">
           <Sparkles class="w-6 h-6 text-warm-300 animate-pulse" />
           <h1 class="font-serif text-3xl font-light text-warm-100 tracking-widest">
-            彤彤星空广播站
+            小华星空广播站
           </h1>
           <Sparkles class="w-6 h-6 text-warm-300 animate-pulse" />
         </div>

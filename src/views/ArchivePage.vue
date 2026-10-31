@@ -14,6 +14,7 @@ const { stories, isAdmin, fetchStories, checkAdmin, deleteStory, init } = useSup
 
 const showContent = ref(false)
 const showUploadModal = ref(false)
+const showEasterEgg = ref(false)
 
 const handlePlay = (story: Story) => {
   router.push({ path: '/home', query: { storyId: story.id } })
@@ -160,7 +161,7 @@ onMounted(async () => {
       <!-- 页脚 -->
       <footer class="max-w-4xl mx-auto pt-8 pb-4 text-center">
         <p class="text-night-600 text-xs tracking-widest">
-          彤彤星空广播站 · 每晚都在
+          小华星空广播站 · 每晚都在
         </p>
         <p class="text-night-700 text-xs mt-2">
           愿你每晚都有好梦 🌙
@@ -175,14 +176,24 @@ onMounted(async () => {
       @success="handleUploadSuccess"
     />
     
-    <!-- 隐藏彩蛋小骨头 -->
+    <!-- 隐藏彩蛋星星 -->
     <button
-      @click="router.push('/secret-garden')"
+      v-if="true"
+      @click="showEasterEgg = true"
       class="hidden-star-easter-egg"
       title="点击看看"
     >
       ✦
     </button>
+
+    <!-- 彩蛋弹窗 -->
+    <div v-if="showEasterEgg" class="easter-egg-modal" @click="showEasterEgg = false">
+      <div class="modal-content" @click.stop>
+        <div class="star-icon">✦</div>
+        <p class="easter-text">大王好厉害</p>
+        <button @click="showEasterEgg = false" class="close-btn">关闭</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -249,5 +260,68 @@ onMounted(async () => {
     opacity: 0.6;
     transform: rotate(15deg) scale(1.1);
   }
+}
+
+.easter-egg-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 2.5rem 2.5rem 2rem;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 90vw;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  box-shadow: 0 0 40px rgba(245, 166, 35, 0.2);
+  animation: bounceIn 0.5s ease-out;
+}
+
+.star-icon {
+  font-size: 2rem;
+  color: #f5a623;
+  margin-bottom: 1rem;
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.easter-text {
+  color: #fde68a;
+  font-size: 1.25rem;
+  font-family: serif;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.05em;
+}
+
+.close-btn {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1.5rem;
+  background: rgba(245, 166, 35, 0.2);
+  color: #f5a623;
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(245, 166, 35, 0.35);
+  color: #fde68a;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>

@@ -16,8 +16,8 @@ const isSubmitting = ref(false)
 const showSuccess = ref(false)
 const commentsContainerRef = ref<HTMLElement | null>(null)
 
-const LINGCHUAN_AVATAR = '/avatar-lingchuan.jpg'
-const TONGTONG_AVATAR = '/avatar-tongtong.jpg'
+const LINGCHUAN_AVATAR = '/f52d1b93b90d9a847ca9761205376327.jpg'
+const TONGTONG_AVATAR = '/微信图片_2026-08-06_121603_195.jpg'
 
 const loadComments = async () => {
   comments.value = await fetchComments(props.storyId)
@@ -28,7 +28,7 @@ const handleSubmit = async () => {
   
   isSubmitting.value = true
   
-  const author = isAdmin.value ? '灵川' : '彤彤'
+  const author = isAdmin.value ? '灵川' : '小华'
   const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
   const result = await submitToSupabase(props.storyId, newComment.value.trim(), author, avatar)
   
@@ -132,7 +132,7 @@ onMounted(() => {
           <!-- 评论内容 -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-2">
-              <span class="text-warm-200 text-sm font-medium">{{ comment.author || '彤彤' }}</span>
+              <span class="text-warm-200 text-sm font-medium">{{ comment.author || '小华' }}</span>
               <span class="text-night-500 text-xs">{{ comment.createdAt }}</span>
             </div>
             <p class="text-night-200 text-sm leading-relaxed break-words">

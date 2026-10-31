@@ -42,7 +42,7 @@ const handleClick = () => {
             :alt="letter.author"
             class="w-5 h-5 rounded-full object-cover"
           />
-          <span v-else class="text-warm-400 text-xs">{{ letter.author || '彤彤' }}</span>
+          <span v-else class="text-warm-400 text-xs">{{ letter.author || '小华' }}</span>
         </div>
         <p class="text-warm-400/80 text-xs tracking-wider mb-1">
           {{ letter.date }}

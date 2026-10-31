@@ -22,8 +22,8 @@ const showPreviewModal = ref(false)
 const commentInputs = ref<Record<number, string>>({})
 const isSubmittingComment = ref<Record<number, boolean>>({})
 
-const LINGCHUAN_AVATAR = '/avatar-lingchuan.jpg'
-const TONGTONG_AVATAR = '/avatar-tongtong.jpg'
+const LINGCHUAN_AVATAR = '/f52d1b93b90d9a847ca9761205376327.jpg'
+const TONGTONG_AVATAR = '/微信图片_2026-08-06_121603_195.jpg'
 
 const handleImageSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -63,7 +63,7 @@ const handleCreate = async () => {
   }
 
   isUploading.value = true
-  const author = isAdmin.value ? '灵川' : '彤彤'
+  const author = isAdmin.value ? '灵川' : '小华'
   const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
   const result = await createMoment(content.value, selectedImages.value, author, avatar)
   isUploading.value = false
@@ -89,7 +89,7 @@ const handleCommentSubmit = async (momentId: number) => {
   if (!commentContent || !commentContent.trim()) return
 
   isSubmittingComment.value[momentId] = true
-  const author = isAdmin.value ? '灵川' : '彤彤'
+  const author = isAdmin.value ? '灵川' : '小华'
   const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
   const result = await addComment(momentId, commentContent, author, avatar)
   isSubmittingComment.value[momentId] = false
@@ -190,13 +190,13 @@ onMounted(async () => {
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-warm-500/30">
                   <img
-                    :src="moment.avatar || '/avatar-tongtong.jpg'"
+                    :src="moment.avatar || '/微信图片_2026-08-06_121603_195.jpg'"
                     :alt="moment.author"
                     class="w-full h-full object-cover"
                   />
                 </div>
                 <div>
-                  <p class="text-warm-100 text-sm font-medium">{{ moment.author || '彤彤' }}</p>
+                  <p class="text-warm-100 text-sm font-medium">{{ moment.author || '小华' }}</p>
                   <p class="text-night-500 text-xs">{{ moment.date }}</p>
                 </div>
               </div>
@@ -300,14 +300,14 @@ onMounted(async () => {
                 >
                   <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
                     <img
-                      :src="comment.avatar || '/avatar-tongtong.jpg'"
+                      :src="comment.avatar || '/微信图片_2026-08-06_121603_195.jpg'"
                       :alt="comment.author"
                       class="w-full h-full object-cover"
                     />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <span class="text-warm-300 text-xs font-medium">{{ comment.author || '彤彤' }}</span>
+                      <span class="text-warm-300 text-xs font-medium">{{ comment.author || '小华' }}</span>
                       <span class="text-night-600 text-xs">{{ comment.date }}</span>
                       <button
                         v-if="isAdmin"

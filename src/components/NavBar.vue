@@ -114,7 +114,7 @@ onMounted(() => {
       >
         <Sparkles class="w-5 h-5 text-warm-400 group-hover:text-warm-300 transition-colors" />
         <span class="font-serif text-warm-100 tracking-wider text-sm hidden sm:inline">
-          彤彤星空
+          小华星空
         </span>
       </button>
       

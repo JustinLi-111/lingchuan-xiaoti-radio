@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ArrowLeft, Plus, Trash2, Edit, X, Heart, Image } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useSecretGarden } from '@/composables/useSecretGarden'
@@ -20,6 +20,12 @@ const newCaption = ref('')
 const selectedFile = ref<File | null>(null)
 const previewUrl = ref('')
 const isUploading = ref(false)
+
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click()
+}
 
 const handleUpload = async () => {
   if (!selectedFile.value || !newCaption.value.trim()) return
@@ -82,6 +88,52 @@ const handleDelete = async (item: SecretItem) => {
   }
 }
 
+interface BonePosition {
+  left: string
+  top: string
+  fontSize: string
+  rotation: string
+  delay: string
+}
+
+const getBonePositions = (count: number): BonePosition[] => {
+  const positions: BonePosition[] = []
+  const gridSize = 100
+  const gridCols = 8
+  const gridRows = 6
+  const cellWidth = gridSize / gridCols
+  const cellHeight = gridSize / gridRows
+
+  const availableCells: { col: number; row: number }[] = []
+  for (let row = 0; row < gridRows; row++) {
+    for (let col = 0; col < gridCols; col++) {
+      availableCells.push({ col, row })
+    }
+  }
+
+  for (let i = 0; i < Math.min(count, availableCells.length); i++) {
+    const randomIndex = Math.floor(Math.random() * availableCells.length)
+    const cell = availableCells.splice(randomIndex, 1)[0]
+
+    const offsetX = (Math.random() - 0.5) * cellWidth * 0.6
+    const offsetY = (Math.random() - 0.5) * cellHeight * 0.6
+
+    const left = `${cell.col * cellWidth + cellWidth / 2 + offsetX}%`
+    const top = `${cell.row * cellHeight + cellHeight / 2 + offsetY}%`
+    const fontSize = `${Math.random() * 16 + 24}px`
+    const rotation = `${Math.random() * 40 - 20}deg`
+    const delay = `${Math.random() * 2}s`
+
+    positions.push({ left, top, fontSize, rotation, delay })
+  }
+
+  return positions
+}
+
+const bonePositions = computed(() => {
+  return getBonePositions(items.value.length)
+})
+
 const handleBack = () => {
   router.back()
 }
@@ -122,10 +174,10 @@ onMounted(() => {})
       
       <div class="text-center mb-12">
         <h1 class="text-3xl md:text-4xl font-serif text-pink-100 mb-4">
-          💝 秘密花园
+          🦴 小狗乐园
         </h1>
         <p class="text-pink-300 text-sm md:text-base">
-          每一颗心都是一个秘密，等待被发现
+          你看起来好可爱，像我的小狗
         </p>
       </div>
       
@@ -139,38 +191,21 @@ onMounted(() => {})
         <p class="text-pink-300">还没有秘密，快来添加第一个吧</p>
       </div>
       
-      <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+      <div v-else class="relative min-h-[500px]">
         <button
-          v-for="item in items"
+          v-for="(item, index) in items"
           :key="item.id"
           @click="handleOpenDetail(item)"
-          class="group relative aspect-square rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-2"
+          class="bone-item absolute cursor-pointer transition-all duration-300 hover:scale-150 hover:drop-shadow-lg"
+          :style="{
+            left: bonePositions[index].left,
+            top: bonePositions[index].top,
+            fontSize: bonePositions[index].fontSize,
+            transform: `rotate(${bonePositions[index].rotation})`,
+            animationDelay: bonePositions[index].delay
+          }"
         >
-          <img
-            :src="item.image_url"
-            :alt="item.caption"
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
-          <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          <div class="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
-            <p class="text-white text-xs line-clamp-2">{{ item.caption }}</p>
-          </div>
-          <div class="absolute top-2 right-2 flex gap-1">
-            <button
-              v-if="isAdmin"
-              @click.stop="handleEdit(item)"
-              class="w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Edit class="w-3 h-3" />
-            </button>
-            <button
-              v-if="isAdmin"
-              @click.stop="handleDelete(item)"
-              class="w-7 h-7 rounded-full bg-red-500/60 backdrop-blur-sm flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Trash2 class="w-3 h-3" />
-            </button>
-          </div>
+          🦴
         </button>
       </div>
     </div>
@@ -194,10 +229,10 @@ onMounted(() => {})
               <label class="block text-pink-200 text-sm mb-2">上传图片</label>
               <div
                 class="relative w-full h-48 rounded-xl border-2 border-dashed border-pink-400/50 flex flex-col items-center justify-center cursor-pointer hover:border-pink-400 transition-colors"
-                @click="(document.getElementById('file-upload') as HTMLInputElement)?.click()"
+                @click="triggerFileInput"
               >
                 <input
-                  id="file-upload"
+                  ref="fileInputRef"
                   type="file"
                   accept="image/*"
                   class="hidden"
@@ -263,12 +298,28 @@ onMounted(() => {})
               <p class="text-pink-100 text-lg font-serif leading-relaxed mb-4">
                 {{ selectedItem.caption }}
               </p>
-              <div class="flex items-center justify-between text-pink-400 text-sm">
-                <span>{{ selectedItem.date }}</span>
-                <span class="flex items-center gap-1">
-                  <Heart class="w-4 h-4" />
-                  <span>秘密</span>
-                </span>
+              <div class="flex items-center justify-between">
+                <span class="text-pink-400 text-sm">{{ selectedItem.date }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-1 text-pink-400 text-sm">
+                    <Heart class="w-4 h-4" />
+                    <span>秘密</span>
+                  </span>
+                  <template v-if="isAdmin">
+                    <button
+                      @click="handleEdit(selectedItem)"
+                      class="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                    >
+                      <Edit class="w-4 h-4" />
+                    </button>
+                    <button
+                      @click="handleDelete(selectedItem)"
+                      class="w-8 h-8 rounded-full bg-red-500/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-red-500/80 transition-colors"
+                    >
+                      <Trash2 class="w-4 h-4" />
+                    </button>
+                  </template>
+                </div>
               </div>
             </div>
           </div>
@@ -329,6 +380,10 @@ onMounted(() => {})
   animation: float 6s ease-in-out infinite;
 }
 
+.bone-item {
+  animation: boneFloat 4s ease-in-out infinite;
+}
+
 .heart-1 {
   top: 10%;
   left: 10%;
@@ -373,6 +428,15 @@ onMounted(() => {})
   50% {
     transform: translateY(-30px) rotate(10deg);
     opacity: 0.6;
+  }
+}
+
+@keyframes boneFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(var(--initial-rotate, 0deg));
+  }
+  50% {
+    transform: translateY(-15px) rotate(calc(var(--initial-rotate, 0deg) + 10deg));
   }
 }
 

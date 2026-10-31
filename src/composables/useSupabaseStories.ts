@@ -181,7 +181,7 @@ export function useSupabaseStories() {
   }
 
   // 提交评论到树洞
-  const submitComment = async (storyId: number, content: string, author: string = '彤彤', avatar: string = ''): Promise<Comment | null> => {
+  const submitComment = async (storyId: number, content: string, author: string = '小华', avatar: string = ''): Promise<Comment | null> => {
     try {
       const { data, error: insertError } = await supabase
         .from('comments')
@@ -342,7 +342,7 @@ export function useSupabaseStories() {
   }
 
   // 提交信件评论（选中文字评论）
-  const submitLetterComment = async (letterId: number, selectedText: string, comment: string, author: string = '彤彤', avatar: string = ''): Promise<LetterComment | null> => {
+  const submitLetterComment = async (letterId: number, selectedText: string, comment: string, author: string = '小华', avatar: string = ''): Promise<LetterComment | null> => {
     try {
       const { data, error: insertError } = await supabase
         .from('letter_comments')
@@ -382,7 +382,7 @@ export function useSupabaseStories() {
   }
 
   // 添加新信件
-  const addLetter = async (title: string, content: string, author: string = '彤彤', avatar: string = ''): Promise<Letter | null> => {
+  const addLetter = async (title: string, content: string, author: string = '小华', avatar: string = ''): Promise<Letter | null> => {
     try {
       const { data, error: insertError } = await supabase
         .from('letters')

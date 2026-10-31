@@ -21,8 +21,8 @@ const isLoadingComments = ref(false)
 const newComment = ref('')
 const isSubmitting = ref(false)
 
-const LINGCHUAN_AVATAR = '/avatar-lingchuan.jpg'
-const TONGTONG_AVATAR = '/avatar-tongtong.jpg'
+const LINGCHUAN_AVATAR = '/f52d1b93b90d9a847ca9761205376327.jpg'
+const TONGTONG_AVATAR = '/微信图片_2026-08-06_121603_195.jpg'
 
 onMounted(async () => {
   await loadComments()
@@ -43,7 +43,7 @@ const handleSubmitComment = async () => {
   
   isSubmitting.value = true
   
-  const author = isAdmin.value ? '灵川' : '彤彤'
+  const author = isAdmin.value ? '灵川' : '小华'
   const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
   const result = await submitLetterComment(
     props.letter.id,
@@ -95,7 +95,7 @@ const handleClose = () => {
                   :alt="letter.author"
                   class="w-6 h-6 rounded-full object-cover"
                 />
-                <span class="text-warm-600 text-sm">{{ letter.author || '彤彤' }}</span>
+                <span class="text-warm-600 text-sm">{{ letter.author || '小华' }}</span>
               </div>
               <p class="text-night-400 text-xs tracking-wider mb-1">{{ letter.date }}</p>
               <h2 class="font-serif text-lg md:text-xl text-night-900">{{ letter.title }}</h2>
@@ -177,7 +177,7 @@ const handleClose = () => {
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 mb-1">
-                        <span class="text-warm-600 text-sm font-medium">{{ comment.author || '彤彤' }}</span>
+                        <span class="text-warm-600 text-sm font-medium">{{ comment.author || '小华' }}</span>
                         <span class="text-night-400 text-xs">{{ comment.createdAt }}</span>
                       </div>
                       <p class="text-night-700 text-sm leading-relaxed">
