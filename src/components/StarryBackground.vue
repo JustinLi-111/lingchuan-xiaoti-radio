@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useStarrySky } from '@/composables/useStarrySky'
+import { useRealSky } from '@/composables/useRealSky'
+import { useWeather } from '@/composables/useWeather'
+import { CONSTELLATION_LINES, moonLitPath, projectAltAz } from '@/lib/skyMath'
 
 interface Star {
   x: number
@@ -22,6 +25,8 @@ interface Meteor {
 }
 
 const { audioLevel, dim, onShootingStar } = useStarrySky()
+const { sky, sunAlt } = useRealSky()
+const { weather, starDim } = useWeather()
 
 /* ---------------- 星野：一次性生成，避免重渲染时星星乱跳 ---------------- */
 const rand = (min: number, max: number) => Math.random() * (max - min) + min
@@ -69,12 +74,14 @@ const palettes = {
 }
 
 const phase = computed(() => {
+  // 用真实太阳高度决定色温：仰角越高越亮，落到地平线下才真正入夜
+  const alt = sunAlt.value
   const hour = new Date().getHours()
-  if (hour >= 5 && hour < 8) return 'dawn'
-  if (hour >= 8 && hour < 17) return 'day'
-  if (hour >= 17 && hour < 20) return 'dusk'
-  if (hour >= 20 || hour < 2) return 'night'
-  return 'deep'
+  if (alt >= 8) return 'day'
+  if (alt >= -1) return hour < 12 ? 'dawn' : 'dusk'
+  if (alt >= -14) return hour < 12 ? 'dawn' : 'dusk'
+  if (alt <= -28) return 'deep'
+  return 'night'
 })
 
 const palette = computed(() => palettes[phase.value as keyof typeof palettes])
@@ -86,6 +93,135 @@ const skyVars = computed(() => ({
   '--sky-glow': palette.value.glow,
   '--sky-tint': palette.value.tint,
 }))
+
+/* ---------------- 真实夜空：月亮与亮星 ---------------- */
+const moon = computed(() => sky.value?.moon ?? null)
+
+const moonPath = computed(() =>
+  moon.value ? moonLitPath(moon.value.illumination, moon.value.waxing) : moonLitPath(0.5, true),
+)
+
+const moonPlace = computed(() => {
+  const m = moon.value
+  if (!m) return { x: 82, y: 12, opacity: 1 }
+  const p = projectAltAz(m.alt, m.az)
+  return {
+    x: Math.min(92, Math.max(8, p.x)),
+    y: Math.min(72, Math.max(6, p.y)),
+    // 月亮落到地平线以下就真的看不到，不再硬画在天上
+    opacity: m.visible ? 1 : 0,
+  }
+})
+
+const moonHaloOpacity = computed(() => {
+  const m = moon.value
+  if (!m) return 0.22
+  return m.visible ? 0.12 + m.illumination * 0.5 : 0
+})
+
+/* 角落里的一行小字：今夜是哪个月，天上有多少颗亮星 */
+const skyLegend = computed(() => {
+  const s = sky.value
+  if (!s) return ''
+  const m = s.moon
+  const moonPart = m.visible ? `${m.phaseName} ${Math.round(m.illumination * 100)}%` : `${m.phaseName} 未升起`
+  return `未央 · ${moonPart} · 亮星 ${s.stars.length}`
+})
+
+const realStars = computed(() =>
+  (sky.value?.stars ?? []).map((star) => {
+    const p = projectAltAz(star.alt, star.az)
+    return {
+      ...star,
+      x: p.x,
+      y: p.y,
+      size: 1.5 + Math.max(0, 3.4 - star.mag) * 0.5,
+      opacity: 0.32 + star.brightness * 0.68,
+    }
+  }),
+)
+
+const constellationLines = computed(() => {
+  const byName = new Map(realStars.value.map((star) => [star.name, star]))
+  return CONSTELLATION_LINES.filter((line) => byName.has(line.from) && byName.has(line.to)).map((line) => {
+    const a = byName.get(line.from)!
+    const b = byName.get(line.to)!
+    return {
+      key: `${line.from}-${line.to}`,
+      x1: a.x,
+      y1: a.y,
+      x2: b.x,
+      y2: b.y,
+      opacity: Math.min(a.opacity, b.opacity) * 0.34,
+    }
+  })
+})
+
+/* ---------------- 天气：西安未央此刻的云、雨、雪 ---------------- */
+const starLayerOpacity = computed(() => Math.max(0.4, starDim.value))
+
+const showClouds = computed(
+  () =>
+    weather.value.loaded &&
+    (weather.value.cloudCover >= 28 ||
+      ['cloudy', 'fog', 'rain', 'snow', 'thunder'].includes(weather.value.condition)),
+)
+
+const cloudOpacity = computed(() => 0.06 + Math.min(1, weather.value.cloudCover / 100) * 0.26)
+
+const clouds = [
+  { x: -6, y: 8, w: 460, h: 150, delay: 0, duration: 68 },
+  { x: 46, y: 4, w: 520, h: 170, delay: 12, duration: 84 },
+  { x: 18, y: 22, w: 380, h: 130, delay: 24, duration: 74 },
+  { x: 62, y: 26, w: 340, h: 120, delay: 6, duration: 92 },
+  { x: 4, y: 34, w: 420, h: 140, delay: 32, duration: 80 },
+]
+
+interface Drop {
+  x: number
+  delay: number
+  duration: number
+  length: number
+  opacity: number
+}
+
+interface Flake {
+  x: number
+  delay: number
+  duration: number
+  size: number
+  drift: number
+}
+
+const drops = ref<Drop[]>([])
+const flakes = ref<Flake[]>([])
+
+const makeDrops = (): Drop[] =>
+  Array.from({ length: 64 }, () => ({
+    x: rand(-8, 108),
+    delay: rand(0, 4),
+    duration: rand(0.7, 1.6),
+    length: rand(38, 86),
+    opacity: rand(0.2, 0.55),
+  }))
+
+const makeFlakes = (): Flake[] =>
+  Array.from({ length: 48 }, () => ({
+    x: rand(-4, 104),
+    delay: rand(0, 10),
+    duration: rand(9, 20),
+    size: rand(1.6, 4),
+    drift: rand(-30, 30),
+  }))
+
+watch(
+  () => weather.value.condition,
+  (condition) => {
+    drops.value = condition === 'rain' || condition === 'thunder' ? makeDrops() : []
+    flakes.value = condition === 'snow' ? makeFlakes() : []
+  },
+  { immediate: true },
+)
 
 /* ---------------- 流星 ---------------- */
 const meteors = ref<Meteor[]>([])
@@ -157,8 +293,11 @@ onUnmounted(() => {
     <!-- 银河带 -->
     <div class="milky-way" />
 
-    <!-- 星层：远 / 中 / 近，三层不同视差 -->
-    <div class="star-layer layer-far" :style="{ transform: `translate3d(${-pointer.x * 10}px, ${-pointer.y * 8}px, 0)` }">
+    <!-- 星层：远 / 中 / 近，三层不同视差；云量越高越暗 -->
+    <div
+      class="star-layer layer-far"
+      :style="{ transform: `translate3d(${-pointer.x * 10}px, ${-pointer.y * 8}px, 0)`, opacity: starLayerOpacity }"
+    >
       <div
         v-for="(star, index) in farStars"
         :key="'f' + index"
@@ -175,7 +314,10 @@ onUnmounted(() => {
       />
     </div>
 
-    <div class="star-layer layer-mid" :style="{ transform: `translate3d(${-pointer.x * 20}px, ${-pointer.y * 16}px, 0)` }">
+    <div
+      class="star-layer layer-mid"
+      :style="{ transform: `translate3d(${-pointer.x * 20}px, ${-pointer.y * 16}px, 0)`, opacity: starLayerOpacity }"
+    >
       <div
         v-for="(star, index) in midStars"
         :key="'m' + index"
@@ -193,7 +335,10 @@ onUnmounted(() => {
       />
     </div>
 
-    <div class="star-layer layer-near" :style="{ transform: `translate3d(${-pointer.x * 34}px, ${-pointer.y * 26}px, 0)` }">
+    <div
+      class="star-layer layer-near"
+      :style="{ transform: `translate3d(${-pointer.x * 34}px, ${-pointer.y * 26}px, 0)`, opacity: starLayerOpacity }"
+    >
       <div
         v-for="(star, index) in nearStars"
         :key="'n' + index"
@@ -206,6 +351,35 @@ onUnmounted(() => {
           opacity: star.opacity,
           animationDuration: star.duration + 's',
           animationDelay: star.delay + 's',
+        }"
+      />
+    </div>
+
+    <!-- 真实星空：今夜西安未央头顶真正挂着的亮星 -->
+    <div class="real-sky" :style="{ opacity: starLayerOpacity }">
+      <svg class="constellation-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <line
+          v-for="line in constellationLines"
+          :key="line.key"
+          :x1="line.x1"
+          :y1="line.y1"
+          :x2="line.x2"
+          :y2="line.y2"
+          :style="{ opacity: line.opacity }"
+          class="constellation-line"
+        />
+      </svg>
+
+      <div
+        v-for="star in realStars"
+        :key="star.name"
+        class="real-star"
+        :style="{
+          left: star.x + '%',
+          top: star.y + '%',
+          width: star.size + 'px',
+          height: star.size + 'px',
+          opacity: star.opacity,
         }"
       />
     </div>
@@ -227,15 +401,96 @@ onUnmounted(() => {
     />
     <div class="glow glow-c aurora" :style="{ transform: `translate3d(${pointer.x * 18}px, ${pointer.y * 12}px, 0)` }" />
 
-    <!-- 月亮 -->
-    <div class="moon-wrap" :style="{ transform: `translate3d(${-pointer.x * 8}px, ${-pointer.y * 6}px, 0)` }">
-      <div class="moon-halo" />
-      <div class="moon-disc">
-        <span class="crater c1" />
-        <span class="crater c2" />
-        <span class="crater c3" />
-      </div>
+    <!-- 月亮：真实月相与真实位置 -->
+    <div
+      class="moon-wrap"
+      :style="{
+        left: moonPlace.x + '%',
+        top: moonPlace.y + '%',
+        opacity: moonPlace.opacity,
+        transform: `translate3d(${-pointer.x * 8}px, ${-pointer.y * 6}px, 0)`,
+      }"
+    >
+      <div
+        class="moon-halo"
+        :style="{
+          opacity: moonHaloOpacity,
+          transform: `scale(${0.86 + (moon ? moon.illumination : 0.5) * 0.34})`,
+        }"
+      />
+      <svg class="moon-svg" viewBox="0 0 100 100">
+        <defs>
+          <radialGradient id="moonFace" cx="34%" cy="30%" r="80%">
+            <stop offset="0%" stop-color="#fffdf5" />
+            <stop offset="46%" stop-color="#f7ecd2" />
+            <stop offset="82%" stop-color="#e2d0a9" />
+            <stop offset="100%" stop-color="#cdb88c" />
+          </radialGradient>
+          <clipPath id="moonLit">
+            <path :d="moonPath" />
+          </clipPath>
+        </defs>
+        <circle cx="50" cy="50" r="46" class="moon-earthshine" />
+        <path :d="moonPath" fill="url(#moonFace)" class="moon-face" />
+        <g clip-path="url(#moonLit)" class="crater-group">
+          <circle cx="34" cy="36" r="9" />
+          <circle cx="57" cy="59" r="7" />
+          <circle cx="41" cy="67" r="5" />
+          <circle cx="65" cy="31" r="4" />
+        </g>
+      </svg>
     </div>
+
+    <!-- 天气：西安未央此刻的云、雨、雪 -->
+    <div v-if="showClouds" class="cloud-layer" :style="{ opacity: cloudOpacity }">
+      <span
+        v-for="(cloud, index) in clouds"
+        :key="index"
+        class="cloud"
+        :style="{
+          left: cloud.x + '%',
+          top: cloud.y + '%',
+          width: cloud.w + 'px',
+          height: cloud.h + 'px',
+          animationDuration: cloud.duration + 's',
+          animationDelay: cloud.delay + 's',
+        }"
+      />
+    </div>
+
+    <div v-if="drops.length" class="rain-layer">
+      <span
+        v-for="(drop, index) in drops"
+        :key="'d' + index"
+        class="drop"
+        :style="{
+          left: drop.x + '%',
+          height: drop.length + 'px',
+          opacity: drop.opacity,
+          animationDuration: drop.duration + 's',
+          animationDelay: drop.delay + 's',
+        }"
+      />
+    </div>
+
+    <div v-if="flakes.length" class="snow-layer">
+      <span
+        v-for="(flake, index) in flakes"
+        :key="'s' + index"
+        class="flake"
+        :style="{
+          left: flake.x + '%',
+          width: flake.size + 'px',
+          height: flake.size + 'px',
+          animationDuration: flake.duration + 's',
+          animationDelay: flake.delay + 's',
+          '--drift': flake.drift + 'px',
+        }"
+      />
+    </div>
+
+    <div v-if="weather.condition === 'fog'" class="fog-layer" />
+    <div v-if="weather.condition === 'thunder'" class="thunder-flash" />
 
     <!-- 流星：一次一颗，从右上斜向左下 -->
     <div
@@ -258,6 +513,9 @@ onUnmounted(() => {
     <!-- 底部沉入夜色 -->
     <div class="bottom-fade" />
     <div class="vignette" />
+
+    <!-- 角落的天象小字 -->
+    <p v-if="skyLegend && sunAlt < 0" class="sky-legend">{{ skyLegend }}</p>
   </div>
 </template>
 
@@ -373,12 +631,17 @@ onUnmounted(() => {
 /* 月亮 */
 .moon-wrap {
   position: absolute;
-  top: 7%;
-  right: 10%;
+  left: 82%;
+  top: 12%;
   width: 96px;
   height: 96px;
-  transition: transform 0.8s var(--ease-out-expo);
-  will-change: transform;
+  margin-left: -48px;
+  transition:
+    left 3s var(--ease-glide),
+    top 3s var(--ease-glide),
+    opacity 1.6s var(--ease-glide),
+    transform 0.8s var(--ease-out-expo);
+  will-change: transform, left, top;
 }
 
 .moon-halo {
@@ -387,46 +650,30 @@ onUnmounted(() => {
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 236, 200, 0.22) 0%, rgba(255, 236, 200, 0.08) 45%, transparent 70%);
   animation: moonBreath 9s ease-in-out infinite;
+  transition: opacity 1.6s var(--ease-glide);
 }
 
-.moon-disc {
+.moon-svg {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 30%, #fffdf5 0%, #f7ecd2 46%, #e2d0a9 82%, #cfba90 100%);
-  box-shadow:
-    inset -10px -8px 22px rgba(120, 100, 70, 0.35),
-    0 0 32px rgba(255, 236, 200, 0.35);
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 0 20px rgba(255, 236, 200, 0.28));
+}
+
+.moon-earthshine {
+  fill: rgba(255, 242, 220, 0.07);
+  stroke: rgba(255, 242, 220, 0.12);
+  stroke-width: 1;
+}
+
+.moon-face {
   animation: moonBreath 9s ease-in-out infinite;
 }
 
-.crater {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(180, 160, 128, 0.32);
-  box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.35);
-}
-
-.c1 {
-  width: 16px;
-  height: 16px;
-  top: 24%;
-  left: 26%;
-}
-
-.c2 {
-  width: 10px;
-  height: 10px;
-  top: 56%;
-  left: 18%;
-}
-
-.c3 {
-  width: 20px;
-  height: 20px;
-  top: 48%;
-  left: 54%;
+.crater-group circle {
+  fill: rgba(176, 156, 124, 0.32);
 }
 
 @keyframes moonBreath {
@@ -501,12 +748,193 @@ onUnmounted(() => {
   background: radial-gradient(130% 100% at 50% 40%, transparent 46%, rgba(2, 5, 12, 0.55) 100%);
 }
 
+/* 真实星空 */
+.real-sky {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 1.2s var(--ease-glide);
+}
+
+.constellation-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.constellation-line {
+  stroke: rgba(170, 198, 240, 0.55);
+  stroke-width: 0.22;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.real-star {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  box-shadow:
+    0 0 7px rgba(214, 230, 255, 0.75),
+    0 0 18px rgba(170, 198, 255, 0.28);
+}
+
+/* 角落的天象小字 */
+.sky-legend {
+  position: absolute;
+  left: 20px;
+  bottom: 18px;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: rgba(214, 226, 246, 0.42);
+  animation: legendIn 1.6s var(--ease-glide) both;
+}
+
+@keyframes legendIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 天气：云 / 雨 / 雪 / 雾 / 雷 */
+.cloud-layer,
+.rain-layer,
+.snow-layer,
+.fog-layer,
+.thunder-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cloud-layer {
+  transition: opacity 2.4s var(--ease-glide);
+}
+
+.cloud {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    rgba(212, 226, 246, 0.5) 0%,
+    rgba(168, 190, 222, 0.24) 46%,
+    transparent 72%
+  );
+  filter: blur(26px);
+  animation-name: cloudDrift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes cloudDrift {
+  from {
+    transform: translate3d(-18px, 0, 0);
+  }
+  to {
+    transform: translate3d(26px, 7px, 0);
+  }
+}
+
+.drop {
+  position: absolute;
+  top: -12%;
+  width: 1px;
+  background: linear-gradient(to bottom, rgba(190, 214, 244, 0), rgba(200, 222, 252, 0.72));
+  transform: rotate(12deg);
+  animation-name: rainFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes rainFall {
+  0% {
+    transform: translate3d(0, -12vh, 0) rotate(12deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translate3d(-11vh, 112vh, 0) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+.flake {
+  position: absolute;
+  top: -6%;
+  border-radius: 50%;
+  background: #eef4ff;
+  box-shadow: 0 0 6px rgba(220, 235, 255, 0.6);
+  animation-name: snowFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes snowFall {
+  0% {
+    transform: translate3d(0, -8vh, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate3d(var(--drift, 0px), 52vh, 0);
+  }
+  100% {
+    transform: translate3d(0, 108vh, 0);
+    opacity: 0;
+  }
+}
+
+.fog-layer {
+  top: auto;
+  bottom: 0;
+  height: 46%;
+  background: linear-gradient(to top, rgba(196, 206, 222, 0.16), rgba(196, 206, 222, 0.05) 55%, transparent 100%);
+}
+
+.thunder-flash {
+  background: rgba(212, 228, 255, 0.5);
+  opacity: 0;
+  animation: thunderFlash 16s linear infinite;
+}
+
+@keyframes thunderFlash {
+  0%,
+  92%,
+  100% {
+    opacity: 0;
+  }
+  93% {
+    opacity: 0.5;
+  }
+  94% {
+    opacity: 0.08;
+  }
+  95% {
+    opacity: 0.34;
+  }
+  96% {
+    opacity: 0;
+  }
+}
+
 @media (max-width: 640px) {
   .moon-wrap {
-    top: 5%;
-    right: 8%;
     width: 64px;
     height: 64px;
+    margin-left: -32px;
   }
 
   .glow-a {

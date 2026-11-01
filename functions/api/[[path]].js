@@ -47,6 +47,15 @@ export async function onRequest(context) {
   const targetPath = url.pathname.replace(/^\/api/, '') || '/'
   const target = SUPABASE_ORIGIN + targetPath + url.search
 
+  // WebSocket（Supabase Realtime）走透传：直接返回上游的 101 响应
+  if ((request.headers.get('upgrade') || '').toLowerCase() === 'websocket') {
+    const wsHeaders = new Headers(request.headers)
+    ;['host', 'origin', 'referer', 'cf-connecting-ip', 'cf-ipcountry', 'cf-ray', 'cf-visitor', 'x-forwarded-for', 'x-forwarded-proto', 'cdn-loop'].forEach(
+      (name) => wsHeaders.delete(name),
+    )
+    return fetch(target, { method: request.method, headers: wsHeaders })
+  }
+
   const headers = new Headers(request.headers)
   DROP_REQUEST_HEADERS.forEach((name) => headers.delete(name))
 
