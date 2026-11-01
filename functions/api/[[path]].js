@@ -50,7 +50,9 @@ export async function onRequest(context) {
   // WebSocket（Supabase Realtime）走透传：必须把上游的 webSocket 配对到客户端
   if ((request.headers.get('upgrade') || '').toLowerCase() === 'websocket') {
     const wsHeaders = new Headers(request.headers)
-    ;['host', 'origin', 'referer', 'cf-connecting-ip', 'cf-ipcountry', 'cf-ray', 'cf-visitor', 'x-forwarded-for', 'x-forwarded-proto', 'cdn-loop'].forEach(
+    // sec-websocket-extensions 会让浏览器和上游协商 permessage-deflate，
+    // 中间隔一层转发时压缩帧处理不好会直接断流，这里关掉压缩走明文帧。
+    ;['host', 'origin', 'referer', 'sec-websocket-extensions', 'cf-connecting-ip', 'cf-ipcountry', 'cf-ray', 'cf-visitor', 'x-forwarded-for', 'x-forwarded-proto', 'cdn-loop'].forEach(
       (name) => wsHeaders.delete(name),
     )
 
