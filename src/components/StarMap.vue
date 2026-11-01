@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ZoomIn, ZoomOut, Maximize2, X, Play } from 'lucide-vue-next'
 import type { Story } from '@/composables/useSupabaseStories'
 
@@ -159,6 +159,8 @@ const mapData = computed(() => {
 
 const view = ref({ x: 0, y: 0, k: 1 })
 const svgRef = ref<SVGSVGElement | null>(null)
+const shellRef = ref<HTMLElement | null>(null)
+const pxPerUnit = ref(0.5)
 const suppressClick = ref(false)
 const dragging = ref(false)
 const hovered = ref<MapStar | null>(null)
@@ -171,9 +173,33 @@ const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k))
 const mapTransform = computed(
   () => `translate(${view.value.x} ${view.value.y}) scale(${view.value.k})`,
 )
-const labelSize = computed(() => 10 / view.value.k)
-const hitRadius = computed(() => 15 / view.value.k)
-const inverseScale = computed(() => 1 / view.value.k)
+
+// 屏幕上一个 viewBox 单位对应多少像素（受缩放影响后，文字/命中区仍保持固定大小）
+const screenScale = computed(() => view.value.k * pxPerUnit.value)
+const labelSize = computed(() => 11 / screenScale.value)
+const hitRadius = computed(() => 14 / screenScale.value)
+const inverseScale = computed(() => 1 / screenScale.value)
+const starRadius = (star: MapStar) => Math.max(star.r, 3.4 / screenScale.value)
+const glowRadius = (star: MapStar) => starRadius(star) * 4
+
+let resizeObserver: ResizeObserver | null = null
+onMounted(() => {
+  const measure = () => {
+    const box = shellRef.value?.getBoundingClientRect()
+    if (box && box.width) pxPerUnit.value = Math.min(box.width / MAP_W, box.height / MAP_H)
+  }
+  measure()
+  if (shellRef.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(measure)
+    resizeObserver.observe(shellRef.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
+
 
 const fitView = () => {
   const { bounds } = mapData.value
@@ -184,7 +210,7 @@ const fitView = () => {
   const pad = 100
   const width = bounds.maxX - bounds.minX + pad * 2
   const height = bounds.maxY - bounds.minY + pad * 2
-  const k = Math.max(0.4, Math.min(1.4, Math.min(MAP_W / width, MAP_H / height)))
+  const k = Math.max(0.4, Math.min(2.4, Math.min(MAP_W / width, MAP_H / height)))
   const cx = (bounds.minX + bounds.maxX) / 2
   const cy = (bounds.minY + bounds.maxY) / 2
   view.value = { k, x: ORIGIN.x - cx * k, y: ORIGIN.y - cy * k }
@@ -269,6 +295,7 @@ watch(
 
 <template>
   <div
+    ref="shellRef"
     class="relative rounded-3xl border border-warm-500/15 overflow-hidden"
     style="height: clamp(360px, 56vh, 620px); background: radial-gradient(ellipse at 50% 45%, rgba(24, 32, 66, 0.55) 0%, rgba(9, 12, 28, 0.72) 62%, rgba(5, 7, 18, 0.85) 100%);"
   >
@@ -329,7 +356,7 @@ watch(
             class="star-glow"
             :cx="star.x"
             :cy="star.y"
-            :r="star.r * 4.2"
+            :r="glowRadius(star)"
             fill="rgba(245, 176, 90, 0.16)"
             :style="{ animationDelay: `${(i % 9) * 140}ms` }"
           />
@@ -337,7 +364,7 @@ watch(
             class="star-core"
             :cx="star.x"
             :cy="star.y"
-            :r="star.r"
+            :r="starRadius(star)"
             fill="#ffe9c6"
             :style="{ animationDelay: `${(i % 7) * 180}ms` }"
           />
