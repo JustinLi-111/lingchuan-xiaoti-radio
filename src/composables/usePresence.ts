@@ -105,8 +105,10 @@ export const usePresence = () => {
     publish(true)
   }
 
-  // 对方 45 秒内没有动静就当作离开了
-  const peerAlive = computed(() => !!peer.value && clock.value - peer.value.at < 45_000)
+  // 对方 2 分钟没有动静才当作离开。窗口切到后台时浏览器会把定时器降到每分钟一次，
+  // 45 秒这种窗口会导致"你一看对方那半边，萤火虫就没了"，所以放宽到 2 分钟；
+  // 真正离开页面时 presence 会立刻把人移除，不会残留。
+  const peerAlive = computed(() => !!peer.value && clock.value - peer.value.at < 120_000)
   const coReading = computed(() => peerAlive.value && !!myStory.value && peer.value?.storyId === myStory.value)
 
   return {
