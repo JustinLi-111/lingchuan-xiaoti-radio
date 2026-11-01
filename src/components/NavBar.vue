@@ -21,20 +21,6 @@ const clearPassword = ref('')
 const clearPasswordError = ref('')
 const SECONDARY_PASSWORD = '520LJL0913111'
 
-// 磁吸：指针靠近时按钮轻轻跟过去一点
-const magnet = (e: MouseEvent) => {
-  if (window.innerWidth < 768) return
-  const el = e.currentTarget as HTMLElement
-  const rect = el.getBoundingClientRect()
-  const dx = (e.clientX - (rect.left + rect.width / 2)) * 0.26
-  const dy = (e.clientY - (rect.top + rect.height / 2)) * 0.3
-  el.style.transform = `translate(${Math.max(-7, Math.min(7, dx))}px, ${Math.max(-5, Math.min(5, dy))}px)`
-}
-
-const release = (e: MouseEvent) => {
-  (e.currentTarget as HTMLElement).style.transform = ''
-}
-
 const goHome = () => {
   router.push('/home')
 }
@@ -124,9 +110,7 @@ onMounted(() => {
       <!-- Logo -->
       <button 
         @click="goHome"
-        class="magnet-btn flex items-center gap-2 group px-2 py-1.5 rounded-xl"
-        @mousemove="magnet"
-        @mouseleave="release"
+        class="flex items-center gap-2 group px-2 py-1.5 rounded-xl"
       >
         <Sparkles class="w-5 h-5 text-warm-400 group-hover:text-warm-300 transition-colors duration-300" />
         <span class="font-serif text-warm-100 tracking-[0.18em] text-sm hidden sm:inline">
@@ -138,10 +122,8 @@ onMounted(() => {
       <div class="flex items-center gap-1 md:gap-2">
         <button
           @click="goHome"
-          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          class="nav-item flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
           :class="route.path === '/home' ? 'is-active' : ''"
-          @mousemove="magnet"
-          @mouseleave="release"
         >
           <Home class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">今夜星光</span>
@@ -149,10 +131,8 @@ onMounted(() => {
         
         <button
           @click="goArchive"
-          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          class="nav-item flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
           :class="route.path === '/archive' ? 'is-active' : ''"
-          @mousemove="magnet"
-          @mouseleave="release"
         >
           <Library class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">时光留声</span>
@@ -160,10 +140,8 @@ onMounted(() => {
 
         <button
           @click="goMailbox"
-          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          class="nav-item flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
           :class="route.path === '/mailbox' ? 'is-active' : ''"
-          @mousemove="magnet"
-          @mouseleave="release"
         >
           <Mail class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">时光信箱</span>
@@ -171,10 +149,8 @@ onMounted(() => {
 
         <button
           @click="goMoments"
-          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          class="nav-item flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
           :class="route.path === '/moments' ? 'is-active' : ''"
-          @mousemove="magnet"
-          @mouseleave="release"
         >
           <Star class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">流星小记</span>

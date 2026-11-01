@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Moon, ChevronDown, Plus, Sparkles } from 'lucide-vue-next'
 import NavBar from '@/components/NavBar.vue'
@@ -7,14 +7,10 @@ import AudioPlayer from '@/components/AudioPlayer.vue'
 import CommentSection from '@/components/CommentSection.vue'
 import UploadStoryModal from '@/components/UploadStoryModal.vue'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
-import { usePresence } from '@/composables/usePresence'
-import { useStarrySky } from '@/composables/useStarrySky'
 
 const router = useRouter()
 const route = useRoute()
 const { stories, latestStory, isAdmin, fetchStories, checkAdmin, init, loading } = useSupabaseStories()
-const { coReading, setMyStory, setMyPlaying } = usePresence()
-const { isPlaying } = useStarrySky()
 
 const showContent = ref(false)
 const showUploadModal = ref(false)
@@ -26,24 +22,6 @@ const currentStory = computed(() => {
     if (story) return story
   }
   return latestStory.value
-})
-
-// 把"我正在听哪一颗、有没有在播"告诉对方；两边同时播同一颗时，会亮起一行小字
-watch(
-  currentStory,
-  (story) => setMyStory(story?.id ?? null),
-  { immediate: true },
-)
-
-watch(
-  isPlaying,
-  (playing) => setMyPlaying(playing),
-  { immediate: true },
-)
-
-onUnmounted(() => {
-  setMyPlaying(false)
-  setMyStory(null)
 })
 
 const scrollToComments = () => {
@@ -127,14 +105,6 @@ onMounted(async () => {
             <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warm-500/10 border border-warm-500/20 mb-6">
               <Moon class="w-4 h-4 text-warm-400" />
               <span class="text-warm-300 text-sm tracking-wider">今晚的星光</span>
-            </div>
-
-            <div
-              v-if="coReading"
-              class="flex items-center justify-center gap-2 text-[11px] tracking-[0.24em] text-warm-300/85"
-            >
-              <span class="w-1.5 h-1.5 rounded-full bg-warm-300 animate-pulse" />
-              <span>此刻 · 同一颗星</span>
             </div>
           </div>
           

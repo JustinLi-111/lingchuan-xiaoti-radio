@@ -274,16 +274,6 @@ input[type='range']::-moz-range-thumb {
   filter: blur(8px);
 }
 
-/* 磁吸按钮：由 NavBar 等交互按下位移动画 */
-.magnet-btn {
-  transition:
-    transform 0.28s var(--ease-spring),
-    background-color 0.3s var(--ease-glide),
-    color 0.3s var(--ease-glide),
-    box-shadow 0.3s var(--ease-glide);
-  will-change: transform;
-}
-
 /* 时间胶片：卡片、纸张上常见的纸张纹理 */
 .paper-grain::before {
   content: '';

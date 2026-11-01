@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Library, Sparkles, Plus } from 'lucide-vue-next'
+import { Library, Sparkles, Plus, ChevronDown } from 'lucide-vue-next'
 import NavBar from '@/components/NavBar.vue'
 import StoryCard from '@/components/StoryCard.vue'
+import StarMap from '@/components/StarMap.vue'
 import UploadStoryModal from '@/components/UploadStoryModal.vue'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 import type { Story } from '@/composables/useSupabaseStories'
@@ -14,6 +15,7 @@ const { stories, isAdmin, fetchStories, checkAdmin, deleteStory, init } = useSup
 const showContent = ref(false)
 const showUploadModal = ref(false)
 const showEasterEgg = ref(false)
+const showMap = ref(false)
 
 const handlePlay = (story: Story) => {
   router.push({ path: '/home', query: { storyId: story.id } })
@@ -140,6 +142,27 @@ onMounted(async () => {
         </div>
       </section>
       
+      <!-- 星图入口 -->
+      <section v-if="stories.length > 0" class="max-w-4xl mx-auto pt-10">
+        <button class="map-entry" @click="showMap = !showMap">
+          <span class="map-entry-icon">✦</span>
+          <div class="text-left flex-1 min-w-0">
+            <p class="text-warm-100 font-serif text-base">星图模式</p>
+            <p class="text-night-400 text-xs mt-1">
+              把 {{ stories.length }} 颗星连成星座 · 拖动、缩放、点星展开 · 悬停看发布时间
+            </p>
+          </div>
+          <ChevronDown
+            class="w-4 h-4 text-warm-400 transition-transform duration-300"
+            :class="showMap ? 'rotate-180' : ''"
+          />
+        </button>
+
+        <div v-if="showMap" class="mt-4">
+          <StarMap :stories="stories" @play="handlePlay" />
+        </div>
+      </section>
+      
       <!-- 底部提示 -->
       <section v-if="stories.length > 0" v-reveal class="max-w-4xl mx-auto py-8">
         <div class="text-center">
@@ -223,6 +246,37 @@ onMounted(async () => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.map-entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(245, 166, 35, 0.18);
+  transition: all 0.3s ease;
+}
+
+.map-entry:hover {
+  background: rgba(245, 166, 35, 0.08);
+  border-color: rgba(245, 166, 35, 0.35);
+  box-shadow: 0 0 30px -12px rgba(245, 166, 35, 0.8);
+}
+
+.map-entry-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(245, 166, 35, 0.12);
+  color: #f5c87a;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .hidden-star-easter-egg {
