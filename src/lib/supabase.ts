@@ -9,4 +9,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '')
 
+// 把历史数据里直连 *.supabase.co 的存储地址统一改成当前配置地址（走同源代理）
+export const toProxiedUrl = (url: string): string => {
+  if (!url || !supabaseUrl) return url
+  return url.replace(/^https:\/\/[a-z0-9]+\.supabase\.co/, supabaseUrl)
+}
+
 export default supabase

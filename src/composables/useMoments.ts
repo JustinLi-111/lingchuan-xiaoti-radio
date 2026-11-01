@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue'
-import { supabase } from '@/lib/supabase'
+import { supabase, toProxiedUrl } from '@/lib/supabase'
 
 export interface MomentComment {
   id: number
@@ -84,6 +84,7 @@ const compressImage = (file: File, maxWidth = 1200, quality = 0.7): Promise<File
 const mapMoment = (dbMoment: any): Moment => {
   return {
     ...dbMoment,
+    image_urls: (dbMoment.image_urls || []).map(toProxiedUrl),
     comments: dbMoment.comments || [],
     date: new Date(dbMoment.created_at).toLocaleDateString('zh-CN', {
       year: 'numeric',

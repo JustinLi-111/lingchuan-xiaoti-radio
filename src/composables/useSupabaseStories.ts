@@ -1,5 +1,5 @@
 import { ref, computed, onMounted } from 'vue'
-import { supabase } from '@/lib/supabase'
+import { supabase, toProxiedUrl } from '@/lib/supabase'
 
 export interface Story {
   id: number
@@ -78,7 +78,7 @@ const mapStory = (dbStory: any): Story => {
     subtitle: `第 ${dbStory.star_number} 颗星`,
     date: dateStr,
     goodnightText: dbStory.description,
-    audioUrl: dbStory.audio_url,
+    audioUrl: toProxiedUrl(dbStory.audio_url),
     audioFileName: dbStory.audio_file_name || '',
   }
 }
