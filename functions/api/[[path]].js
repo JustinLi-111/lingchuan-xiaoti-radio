@@ -47,13 +47,27 @@ export async function onRequest(context) {
   const targetPath = url.pathname.replace(/^\/api/, '') || '/'
   const target = SUPABASE_ORIGIN + targetPath + url.search
 
-  // WebSocket（Supabase Realtime）走透传：直接返回上游的 101 响应
+  // WebSocket（Supabase Realtime）走透传：必须把上游的 webSocket 配对到客户端
   if ((request.headers.get('upgrade') || '').toLowerCase() === 'websocket') {
     const wsHeaders = new Headers(request.headers)
     ;['host', 'origin', 'referer', 'cf-connecting-ip', 'cf-ipcountry', 'cf-ray', 'cf-visitor', 'x-forwarded-for', 'x-forwarded-proto', 'cdn-loop'].forEach(
       (name) => wsHeaders.delete(name),
     )
-    return fetch(target, { method: request.method, headers: wsHeaders })
+
+    const upstream = await fetch(target, { method: 'GET', headers: wsHeaders })
+    // 直接把 101 响应原样返回时，客户端的 socket 并没有和上游配对，会立刻断开；
+    // 必须自己构造一个带 webSocket 的 101 响应，运行时才会把两端接起来。
+    if (upstream.webSocket) {
+      try {
+        return new Response(null, { status: 101, webSocket: upstream.webSocket })
+      } catch (err) {
+        return new Response(
+          JSON.stringify({ error: 'WebSocket pairing failed', detail: String(err) }),
+          { status: 502, headers: { 'content-type': 'application/json', ...CORS_HEADERS } }
+        )
+      }
+    }
+    return upstream
   }
 
   const headers = new Headers(request.headers)
