@@ -3,7 +3,6 @@ import { watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import StarryBackground from '@/components/StarryBackground.vue'
 import ClickStardust from '@/components/ClickStardust.vue'
-import FireflyPresence from '@/components/FireflyPresence.vue'
 import { useStarrySky } from '@/composables/useStarrySky'
 import { usePresence } from '@/composables/usePresence'
 
@@ -36,7 +35,6 @@ onMounted(() => {
       </transition>
     </router-view>
 
-    <FireflyPresence />
     <ClickStardust />
   </div>
 </template>

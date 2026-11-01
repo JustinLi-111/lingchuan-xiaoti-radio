@@ -8,11 +8,13 @@ import CommentSection from '@/components/CommentSection.vue'
 import UploadStoryModal from '@/components/UploadStoryModal.vue'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 import { usePresence } from '@/composables/usePresence'
+import { useStarrySky } from '@/composables/useStarrySky'
 
 const router = useRouter()
 const route = useRoute()
 const { stories, latestStory, isAdmin, fetchStories, checkAdmin, init, loading } = useSupabaseStories()
-const { coReading, setMyStory } = usePresence()
+const { coReading, setMyStory, setMyPlaying } = usePresence()
+const { isPlaying } = useStarrySky()
 
 const showContent = ref(false)
 const showUploadModal = ref(false)
@@ -26,14 +28,21 @@ const currentStory = computed(() => {
   return latestStory.value
 })
 
-// 把"我正在听哪一颗星"告诉萤火虫；对方也在同一颗星时，会亮起一行小字
+// 把"我正在听哪一颗、有没有在播"告诉对方；两边同时播同一颗时，会亮起一行小字
 watch(
   currentStory,
   (story) => setMyStory(story?.id ?? null),
   { immediate: true },
 )
 
+watch(
+  isPlaying,
+  (playing) => setMyPlaying(playing),
+  { immediate: true },
+)
+
 onUnmounted(() => {
+  setMyPlaying(false)
   setMyStory(null)
 })
 

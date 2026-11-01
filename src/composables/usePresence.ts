@@ -2,36 +2,34 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 
 /**
- * 在场感：把另一个人的光标变成一只萤火虫。
- * 用 Supabase Realtime 的 presence，不做任何消息存储，关掉页面就消失。
+ * 共读：两个地方同时播放同一颗星的时候，播放器上方亮起一行小字。
+ * 只用 Supabase Realtime 的 presence 传递"我在听哪一颗、是否正在播放"，不落库，
+ * 关掉页面就消失。
  */
 
 interface PeerState {
-  x: number // 归一化 0~1
-  y: number
   storyId: number | null
+  playing: boolean
   at: number
 }
 
 const peer = ref<PeerState | null>(null)
-const connected = ref(false)
 const myStory = ref<number | null>(null)
+const myPlaying = ref(false)
 const clock = ref(Date.now())
-const clientId = `firefly-${Math.random().toString(36).slice(2, 9)}`
+const clientId = `star-${Math.random().toString(36).slice(2, 9)}`
 
 let channel: any = null
 let started = false
 let heartbeat: number | undefined
 let clockTimer: number | undefined
-let lastPublish = 0
-const cursor = { x: 0.5, y: 0.5 }
 
-const publish = (force = false) => {
-  if (!channel) return
-  const now = Date.now()
-  if (!force && now - lastPublish < 240) return
-  lastPublish = now
-  channel.track({ x: cursor.x, y: cursor.y, storyId: myStory.value, at: now })
+const publish = () => {
+  channel?.track({
+    storyId: myStory.value,
+    playing: myPlaying.value,
+    at: Date.now(),
+  })
 }
 
 const syncPeer = () => {
@@ -48,18 +46,11 @@ const syncPeer = () => {
   }
   peer.value = found
     ? {
-        x: Number(found.x ?? 0.5),
-        y: Number(found.y ?? 0.5),
         storyId: found.storyId ?? null,
+        playing: Boolean(found.playing),
         at: Number(found.at ?? Date.now()),
       }
     : null
-}
-
-const onPointerMove = (e: PointerEvent) => {
-  cursor.x = e.clientX / window.innerWidth
-  cursor.y = e.clientY / window.innerHeight
-  publish()
 }
 
 export const usePresence = () => {
@@ -76,13 +67,11 @@ export const usePresence = () => {
       .on('presence', { event: 'join' }, syncPeer)
       .on('presence', { event: 'leave' }, syncPeer)
       .subscribe((status: string) => {
-        connected.value = status === 'SUBSCRIBED'
-        if (status === 'SUBSCRIBED') publish(true)
+        if (status === 'SUBSCRIBED') publish()
       })
 
-    window.addEventListener('pointermove', onPointerMove, { passive: true })
-    heartbeat = window.setInterval(() => publish(true), 15_000)
-    // 对方长时间不动时也要让"还在不在"的判断继续走
+    heartbeat = window.setInterval(publish, 20_000)
+    // 对方长时间不动也要让"还在不在"的判断继续走
     clockTimer = window.setInterval(() => {
       clock.value = Date.now()
     }, 10_000)
@@ -91,33 +80,43 @@ export const usePresence = () => {
   const stop = () => {
     if (!started) return
     started = false
-    window.removeEventListener('pointermove', onPointerMove)
     if (heartbeat) window.clearInterval(heartbeat)
     if (clockTimer) window.clearInterval(clockTimer)
     channel?.unsubscribe()
     channel = null
     peer.value = null
-    connected.value = false
   }
 
   const setMyStory = (id: number | null) => {
     myStory.value = id
-    publish(true)
+    publish()
   }
 
-  // 对方 2 分钟没有动静才当作离开。窗口切到后台时浏览器会把定时器降到每分钟一次，
-  // 45 秒这种窗口会导致"你一看对方那半边，萤火虫就没了"，所以放宽到 2 分钟；
-  // 真正离开页面时 presence 会立刻把人移除，不会残留。
+  const setMyPlaying = (value: boolean) => {
+    myPlaying.value = value
+    publish()
+  }
+
+  // 对方两分钟没有动静才当作离开（窗口切到后台时定时器会被浏览器降到每分钟一次）
   const peerAlive = computed(() => !!peer.value && clock.value - peer.value.at < 120_000)
-  const coReading = computed(() => peerAlive.value && !!myStory.value && peer.value?.storyId === myStory.value)
+
+  // 两个人都在播、而且播的是同一颗星
+  const coReading = computed(
+    () =>
+      peerAlive.value &&
+      myPlaying.value &&
+      !!myStory.value &&
+      peer.value?.playing === true &&
+      peer.value?.storyId === myStory.value,
+  )
 
   return {
     peer,
     peerAlive,
-    connected,
     coReading,
     start,
     stop,
     setMyStory,
+    setMyPlaying,
   }
 }
