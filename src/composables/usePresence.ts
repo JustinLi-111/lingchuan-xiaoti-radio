@@ -17,6 +17,7 @@ const peer = ref<PeerState | null>(null)
 const myStory = ref<number | null>(null)
 const myPlaying = ref(false)
 const clock = ref(Date.now())
+const status = ref('')
 const clientId = `star-${Math.random().toString(36).slice(2, 9)}`
 
 let channel: any = null
@@ -66,8 +67,9 @@ export const usePresence = () => {
       .on('presence', { event: 'sync' }, syncPeer)
       .on('presence', { event: 'join' }, syncPeer)
       .on('presence', { event: 'leave' }, syncPeer)
-      .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') publish()
+      .subscribe((s: string) => {
+        status.value = s
+        if (s === 'SUBSCRIBED') publish()
       })
 
     heartbeat = window.setInterval(publish, 20_000)
@@ -114,6 +116,9 @@ export const usePresence = () => {
     peer,
     peerAlive,
     coReading,
+    status,
+    myStory,
+    myPlaying,
     start,
     stop,
     setMyStory,
