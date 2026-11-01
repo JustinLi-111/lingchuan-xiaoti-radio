@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Star, Plus, Image, X, Trash2, Sparkles, MessageCircle } from 'lucide-vue-next'
-import StarryBackground from '@/components/StarryBackground.vue'
+import { Star, Plus, Image, X, Trash2, Sparkles, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import NavBar from '@/components/NavBar.vue'
 import { useMoments } from '@/composables/useMoments'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
+import { useStarrySky } from '@/composables/useStarrySky'
+import { LINGCHUAN_AVATAR, XIAOHUA_AVATAR } from '@/lib/avatar'
 
 const router = useRouter()
 const { moments, loading, createMoment, deleteMoment, addComment, deleteComment } = useMoments()
 const { isAdmin, checkAdmin } = useSupabaseStories()
+const { requestShootingStar } = useStarrySky()
 
 const showContent = ref(false)
 const showCreateModal = ref(false)
@@ -17,13 +19,12 @@ const content = ref('')
 const selectedImages = ref<File[]>([])
 const imagePreviews = ref<string[]>([])
 const isUploading = ref(false)
-const previewImage = ref('')
+const previewImages = ref<string[]>([])
+const previewIndex = ref(0)
 const showPreviewModal = ref(false)
+const previewImage = computed(() => previewImages.value[previewIndex.value] || '')
 const commentInputs = ref<Record<number, string>>({})
 const isSubmittingComment = ref<Record<number, boolean>>({})
-
-const LINGCHUAN_AVATAR = '/f52d1b93b90d9a847ca9761205376327.jpg'
-const TONGTONG_AVATAR = '/微信图片_2026-08-06_121603_195.jpg'
 
 const handleImageSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -47,13 +48,27 @@ const removeImage = (index: number) => {
   imagePreviews.value.splice(index, 1)
 }
 
-const openImagePreview = (url: string) => {
-  previewImage.value = url
+const openImagePreview = (urls: string[], index: number) => {
+  previewImages.value = urls
+  previewIndex.value = index
   showPreviewModal.value = true
 }
 
 const closeImagePreview = () => {
   showPreviewModal.value = false
+}
+
+const stepPreview = (delta: number) => {
+  const total = previewImages.value.length
+  if (total <= 1) return
+  previewIndex.value = (previewIndex.value + delta + total) % total
+}
+
+const handlePreviewKeydown = (e: KeyboardEvent) => {
+  if (!showPreviewModal.value) return
+  if (e.key === 'Escape') closeImagePreview()
+  if (e.key === 'ArrowRight') stepPreview(1)
+  if (e.key === 'ArrowLeft') stepPreview(-1)
 }
 
 const handleCreate = async () => {
@@ -64,7 +79,7 @@ const handleCreate = async () => {
 
   isUploading.value = true
   const author = isAdmin.value ? '灵川' : '小华'
-  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : XIAOHUA_AVATAR
   const result = await createMoment(content.value, selectedImages.value, author, avatar)
   isUploading.value = false
 
@@ -73,6 +88,7 @@ const handleCreate = async () => {
     selectedImages.value = []
     imagePreviews.value = []
     showCreateModal.value = false
+    requestShootingStar()
   } else {
     alert('发布失败，请重试')
   }
@@ -90,7 +106,7 @@ const handleCommentSubmit = async (momentId: number) => {
 
   isSubmittingComment.value[momentId] = true
   const author = isAdmin.value ? '灵川' : '小华'
-  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : XIAOHUA_AVATAR
   const result = await addComment(momentId, commentContent, author, avatar)
   isSubmittingComment.value[momentId] = false
 
@@ -117,20 +133,25 @@ onMounted(async () => {
   setTimeout(() => {
     showContent.value = true
   }, 200)
+
+  window.addEventListener('keydown', handlePreviewKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handlePreviewKeydown)
 })
 </script>
 
 <template>
   <div class="relative min-h-screen overflow-hidden">
-    <StarryBackground />
     <NavBar />
     
     <div 
-      class="relative z-10 pt-24 pb-16 px-6 transition-all duration-1000 ease-out"
+      class="relative z-10 pt-24 pb-16 px-6 transition-all duration-700 ease-out"
       :class="showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
     >
       <!-- 页面标题 -->
-      <section class="max-w-2xl mx-auto mb-10">
+      <section v-reveal class="max-w-2xl mx-auto mb-10">
         <div class="text-center">
           <div class="inline-flex items-center gap-3 mb-4">
             <Star class="w-6 h-6 text-warm-400 animate-pulse" />
@@ -146,10 +167,10 @@ onMounted(async () => {
       </section>
 
       <!-- 发布按钮 -->
-      <section class="max-w-2xl mx-auto mb-8">
+      <section v-reveal="90" class="max-w-2xl mx-auto mb-8">
         <button
           @click="showCreateModal = true"
-          class="w-full glass rounded-3xl p-6 flex items-center gap-4 hover:bg-white/10 transition-all duration-300 group"
+          class="w-full glass rounded-3xl p-6 flex items-center gap-4 hover:bg-white/[0.08] hover:-translate-y-0.5 transition-all duration-500 group"
         >
           <div class="w-12 h-12 rounded-full bg-warm-500/20 flex items-center justify-center group-hover:bg-warm-500/30 transition-colors">
             <Plus class="w-6 h-6 text-warm-400" />
@@ -161,7 +182,7 @@ onMounted(async () => {
       </section>
 
       <!-- 动态列表 -->
-      <section class="max-w-2xl mx-auto">
+      <section class="max-w-5xl mx-auto">
         <!-- 空状态 -->
         <div v-if="!loading && moments.length === 0" class="text-center py-20">
           <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-warm-500/10 border border-warm-500/20 flex items-center justify-center">
@@ -178,19 +199,20 @@ onMounted(async () => {
           <div class="w-8 h-8 mx-auto border-2 border-warm-500/30 border-t-warm-400 rounded-full animate-spin" />
         </div>
 
-        <!-- 动态卡片列表 -->
-        <div v-else class="space-y-6">
+        <!-- 动态卡片列表：两列瀑布流 -->
+        <div v-else class="columns-1 lg:columns-2 gap-6 [column-fill:_balance]">
           <div
-            v-for="moment in moments"
+            v-for="(moment, index) in moments"
             :key="moment.id"
-            class="glass rounded-3xl overflow-hidden animate-fade-in"
+            v-reveal="Math.min(index * 80, 320)"
+            class="moment-card glass rounded-3xl overflow-hidden mb-6 break-inside-avoid"
           >
             <!-- 头部 -->
             <div class="px-6 py-4 flex items-center justify-between border-b border-night-700/30">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-warm-500/30">
+                <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-warm-500/30 shadow-[0_0_16px_-4px_rgba(245,166,35,0.6)]">
                   <img
-                    :src="moment.avatar || '/微信图片_2026-08-06_121603_195.jpg'"
+                    :src="moment.avatar || XIAOHUA_AVATAR"
                     :alt="moment.author"
                     class="w-full h-full object-cover"
                   />
@@ -219,11 +241,11 @@ onMounted(async () => {
               <!-- 图片区域 - 根据图片数量动态布局 -->
               <div v-if="moment.image_urls && moment.image_urls.length > 0">
                 <!-- 1张图片 - 大图展示 -->
-                <div v-if="moment.image_urls.length === 1" class="rounded-2xl overflow-hidden cursor-pointer" @click="openImagePreview(moment.image_urls[0])">
+                <div v-if="moment.image_urls.length === 1" class="rounded-2xl overflow-hidden cursor-zoom-in" @click="openImagePreview(moment.image_urls, 0)">
                   <img
                     :src="moment.image_urls[0]"
                     alt="动态图片"
-                    class="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-500"
+                    class="img-zoom shimmer w-full h-auto object-cover"
                     style="max-height: 400px;"
                   />
                 </div>
@@ -235,8 +257,8 @@ onMounted(async () => {
                     :key="index"
                     :src="url"
                     alt="动态图片"
-                    class="w-full h-48 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
-                    @click="openImagePreview(url)"
+                    class="img-zoom shimmer w-full h-48 object-cover cursor-zoom-in"
+                    @click="openImagePreview(moment.image_urls, index)"
                   />
                 </div>
 
@@ -245,21 +267,21 @@ onMounted(async () => {
                   <img
                     :src="moment.image_urls[0]"
                     alt="动态图片"
-                    class="w-full h-48 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
-                    @click="openImagePreview(moment.image_urls[0])"
+                    class="img-zoom shimmer w-full h-48 object-cover cursor-zoom-in"
+                    @click="openImagePreview(moment.image_urls, 0)"
                   />
                   <div class="grid grid-cols-2 gap-2 mt-2">
                     <img
                       :src="moment.image_urls[1]"
                       alt="动态图片"
-                      class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
-                      @click="openImagePreview(moment.image_urls[1])"
+                      class="img-zoom shimmer w-full h-24 object-cover cursor-zoom-in"
+                      @click="openImagePreview(moment.image_urls, 1)"
                     />
                     <img
                       :src="moment.image_urls[2]"
                       alt="动态图片"
-                      class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
-                      @click="openImagePreview(moment.image_urls[2])"
+                      class="img-zoom shimmer w-full h-24 object-cover cursor-zoom-in"
+                      @click="openImagePreview(moment.image_urls, 2)"
                     />
                   </div>
                 </div>
@@ -271,8 +293,8 @@ onMounted(async () => {
                     :key="index"
                     :src="url"
                     alt="动态图片"
-                    class="w-full h-32 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
-                    @click="openImagePreview(url)"
+                    class="img-zoom shimmer w-full h-32 object-cover cursor-zoom-in"
+                    @click="openImagePreview(moment.image_urls, index)"
                   />
                 </div>
 
@@ -283,8 +305,8 @@ onMounted(async () => {
                     :key="index"
                     :src="url"
                     alt="动态图片"
-                    class="w-full h-24 object-cover hover:scale-[1.02] transition-transform duration-500 cursor-pointer"
-                    @click="openImagePreview(url)"
+                    class="img-zoom shimmer w-full h-24 object-cover cursor-zoom-in"
+                    @click="openImagePreview(moment.image_urls, index)"
                   />
                 </div>
               </div>
@@ -300,13 +322,14 @@ onMounted(async () => {
                 >
                   <div class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
                     <img
-                      :src="comment.avatar || '/微信图片_2026-08-06_121603_195.jpg'"
+                      :src="comment.avatar || XIAOHUA_AVATAR"
                       :alt="comment.author"
                       class="w-full h-full object-cover"
                     />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
+                      <span class="comment-star">✦</span>
                       <span class="text-warm-300 text-xs font-medium">{{ comment.author || '小华' }}</span>
                       <span class="text-night-600 text-xs">{{ comment.date }}</span>
                       <button
@@ -365,26 +388,47 @@ onMounted(async () => {
       </footer>
     </div>
 
-    <!-- 图片预览弹窗 -->
+    <!-- 图片灯箱 -->
     <Teleport to="body">
-      <div
-        v-if="showPreviewModal"
-        class="fixed inset-0 z-50 flex items-center justify-center"
-        @click="closeImagePreview"
-      >
-        <div class="absolute inset-0 bg-black/90" />
-        <button
-          @click="closeImagePreview"
-          class="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-        >
-          <X class="w-6 h-6" />
-        </button>
-        <img
-          :src="previewImage"
-          alt="预览"
-          class="relative z-10 max-w-[90vw] max-h-[90vh] object-contain rounded-xl"
-        />
-      </div>
+      <Transition name="lightbox">
+        <div v-if="showPreviewModal" class="fixed inset-0 z-[60] flex items-center justify-center">
+          <div class="absolute inset-0 bg-night-950/92 backdrop-blur-xl" @click="closeImagePreview" />
+
+          <button class="lb-close" title="关闭" @click="closeImagePreview">
+            <X class="w-5 h-5" />
+          </button>
+
+          <button
+            v-if="previewImages.length > 1"
+            class="lb-nav lb-prev"
+            title="上一张"
+            @click.stop="stepPreview(-1)"
+          >
+            <ChevronLeft class="w-6 h-6" />
+          </button>
+
+          <img
+            :key="previewImage"
+            :src="previewImage"
+            alt="预览"
+            class="lb-img"
+            @click.stop
+          />
+
+          <button
+            v-if="previewImages.length > 1"
+            class="lb-nav lb-next"
+            title="下一张"
+            @click.stop="stepPreview(1)"
+          >
+            <ChevronRight class="w-6 h-6" />
+          </button>
+
+          <div v-if="previewImages.length > 1" class="lb-counter">
+            {{ previewIndex + 1 }} / {{ previewImages.length }}
+          </div>
+        </div>
+      </Transition>
     </Teleport>
 
     <!-- 发布动态弹窗 -->
@@ -454,18 +498,154 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out;
+.moment-card {
+  transition: transform 0.5s var(--ease-out-expo), border-color 0.4s ease, box-shadow 0.5s var(--ease-out-expo);
 }
 
-@keyframes fadeIn {
+.moment-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(245, 166, 35, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 28px 50px -30px rgba(0, 0, 0, 0.9),
+    0 0 40px -20px rgba(245, 166, 35, 0.5);
+}
+
+.img-zoom {
+  transition: transform 0.7s var(--ease-out-expo), filter 0.5s ease;
+}
+
+.img-zoom:hover {
+  transform: scale(1.035);
+  filter: brightness(1.06) saturate(1.08);
+}
+
+.comment-star {
+  font-size: 9px;
+  color: rgba(245, 166, 35, 0.55);
+}
+
+/* ---------- 灯箱 ---------- */
+.lightbox-enter-active {
+  transition: opacity 0.4s ease;
+}
+
+.lightbox-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.lightbox-enter-from,
+.lightbox-leave-to {
+  opacity: 0;
+}
+
+.lb-img {
+  position: relative;
+  z-index: 10;
+  max-width: 90vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 14px;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.95), 0 0 60px -20px rgba(245, 166, 35, 0.35);
+  animation: lbIn 0.5s var(--ease-out-expo);
+}
+
+@keyframes lbIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: scale(0.92);
+    filter: blur(12px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+.lb-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 20;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s var(--ease-spring);
+}
+
+.lb-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: rotate(90deg);
+}
+
+.lb-nav {
+  position: absolute;
+  z-index: 20;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin-top: -23px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 236, 200, 0.75);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.3s var(--ease-glide);
+}
+
+.lb-nav:hover {
+  color: #ffd49b;
+  background: rgba(245, 166, 35, 0.18);
+  border-color: rgba(245, 166, 35, 0.4);
+}
+
+.lb-prev {
+  left: 22px;
+}
+
+.lb-next {
+  right: 22px;
+}
+
+.lb-counter {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: rgba(245, 166, 35, 0.7);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 166, 35, 0.2);
+  background: rgba(8, 17, 32, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+@media (max-width: 640px) {
+  .lb-prev {
+    left: 8px;
+  }
+
+  .lb-next {
+    right: 8px;
+  }
+
+  .lb-nav {
+    width: 38px;
+    height: 38px;
+    margin-top: -19px;
   }
 }
 

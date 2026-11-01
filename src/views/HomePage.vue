@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Moon, ChevronDown, Plus, Sparkles } from 'lucide-vue-next'
-import StarryBackground from '@/components/StarryBackground.vue'
 import NavBar from '@/components/NavBar.vue'
 import AudioPlayer from '@/components/AudioPlayer.vue'
 import CommentSection from '@/components/CommentSection.vue'
@@ -61,16 +60,15 @@ onMounted(async () => {
 
 <template>
   <div class="relative min-h-screen overflow-hidden">
-    <StarryBackground />
     <NavBar @open-upload="openUploadModal" />
     
     <div 
-      class="relative z-10 pt-24 pb-16 px-6 transition-all duration-1000 ease-out"
+      class="relative z-10 pt-24 pb-16 px-6 transition-all duration-700 ease-out"
       :class="showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
     >
       <!-- 空状态：还没有星星 -->
       <template v-if="!currentStory">
-        <section class="max-w-2xl mx-auto py-20 md:py-32 text-center">
+        <section v-reveal class="max-w-2xl mx-auto py-20 md:py-32 text-center">
           <div class="mb-8">
             <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-warm-500/10 border border-warm-500/20 flex items-center justify-center">
               <Sparkles class="w-10 h-10 text-warm-400 animate-pulse" />
@@ -102,7 +100,7 @@ onMounted(async () => {
       <!-- 有内容时的正常展示 -->
       <template v-else>
         <!-- 主播放器区域 -->
-        <section class="max-w-4xl mx-auto py-12 md:py-16">
+        <section v-reveal class="max-w-4xl mx-auto py-12 md:py-16">
           <div class="text-center mb-8">
             <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warm-500/10 border border-warm-500/20 mb-6">
               <Moon class="w-4 h-4 text-warm-400" />
@@ -114,10 +112,10 @@ onMounted(async () => {
         </section>
         
         <!-- 晚安语区域 -->
-        <section class="max-w-2xl mx-auto py-12 md:py-16">
+        <section v-reveal="120" class="max-w-2xl mx-auto py-12 md:py-16">
           <div class="text-center">
             <div class="inline-block mb-6">
-              <span class="text-warm-400 text-2xl">✦</span>
+              <span class="text-warm-400 text-2xl animate-pulse">✦</span>
             </div>
             <p class="font-serif text-xl md:text-2xl text-warm-100 leading-relaxed font-light">
               "{{ currentStory.goodnightText }}"
@@ -140,7 +138,7 @@ onMounted(async () => {
         </div>
         
         <!-- 评论区 -->
-        <section id="comments-section" class="max-w-4xl mx-auto py-12 md:py-16">
+        <section id="comments-section" v-reveal="160" class="max-w-4xl mx-auto py-12 md:py-16">
           <CommentSection :story-id="currentStory.id" />
         </section>
       </template>

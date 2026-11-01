@@ -1,5 +1,6 @@
 import { ref, onMounted } from 'vue'
 import { supabase, toProxiedUrl } from '@/lib/supabase'
+import { normalizeAvatar } from '@/lib/avatar'
 
 export interface MomentComment {
   id: number
@@ -84,6 +85,7 @@ const compressImage = (file: File, maxWidth = 1200, quality = 0.7): Promise<File
 const mapMoment = (dbMoment: any): Moment => {
   return {
     ...dbMoment,
+    avatar: normalizeAvatar(dbMoment.avatar),
     image_urls: (dbMoment.image_urls || []).map(toProxiedUrl),
     comments: dbMoment.comments || [],
     date: new Date(dbMoment.created_at).toLocaleDateString('zh-CN', {
@@ -99,6 +101,7 @@ const mapMoment = (dbMoment: any): Moment => {
 const mapComment = (dbComment: any): MomentComment => {
   return {
     ...dbComment,
+    avatar: normalizeAvatar(dbComment.avatar),
     date: new Date(dbComment.created_at).toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: '2-digit',

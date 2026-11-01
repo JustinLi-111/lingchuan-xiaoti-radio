@@ -1,5 +1,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { supabase, toProxiedUrl } from '@/lib/supabase'
+import { normalizeAvatar } from '@/lib/avatar'
 
 export interface Story {
   id: number
@@ -87,6 +88,7 @@ const mapStory = (dbStory: any): Story => {
 const mapComment = (dbComment: any): Comment => {
   return {
     ...dbComment,
+    avatar: normalizeAvatar(dbComment.avatar),
     storyId: dbComment.story_id,
     createdAt: new Date(dbComment.created_at).toLocaleString('zh-CN', {
       year: 'numeric',
@@ -102,6 +104,7 @@ const mapComment = (dbComment: any): Comment => {
 const mapLetter = (dbLetter: any): Letter => {
   return {
     ...dbLetter,
+    avatar: normalizeAvatar(dbLetter.avatar),
     date: new Date(dbLetter.created_at).toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: '2-digit',
@@ -114,6 +117,7 @@ const mapLetter = (dbLetter: any): Letter => {
 const mapLetterComment = (dbComment: any): LetterComment => {
   return {
     ...dbComment,
+    avatar: normalizeAvatar(dbComment.avatar),
     letterId: dbComment.letter_id,
     selectedText: dbComment.selected_text,
     createdAt: new Date(dbComment.created_at).toLocaleString('zh-CN', {

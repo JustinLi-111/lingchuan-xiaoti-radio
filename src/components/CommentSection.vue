@@ -3,6 +3,7 @@ import { ref, onMounted, watch, nextTick } from 'vue'
 import { Send, Heart, MessageCircle } from 'lucide-vue-next'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 import type { Comment } from '@/composables/useSupabaseStories'
+import { LINGCHUAN_AVATAR, XIAOHUA_AVATAR } from '@/lib/avatar'
 
 const props = defineProps<{
   storyId: number
@@ -16,9 +17,6 @@ const isSubmitting = ref(false)
 const showSuccess = ref(false)
 const commentsContainerRef = ref<HTMLElement | null>(null)
 
-const LINGCHUAN_AVATAR = '/f52d1b93b90d9a847ca9761205376327.jpg'
-const TONGTONG_AVATAR = '/微信图片_2026-08-06_121603_195.jpg'
-
 const loadComments = async () => {
   comments.value = await fetchComments(props.storyId)
 }
@@ -29,7 +27,7 @@ const handleSubmit = async () => {
   isSubmitting.value = true
   
   const author = isAdmin.value ? '灵川' : '小华'
-  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : XIAOHUA_AVATAR
   const result = await submitToSupabase(props.storyId, newComment.value.trim(), author, avatar)
   
   if (result) {
@@ -123,7 +121,7 @@ onMounted(() => {
           <!-- 头像 -->
           <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border border-warm-500/30">
             <img
-              :src="comment.avatar || TONGTONG_AVATAR"
+              :src="comment.avatar || XIAOHUA_AVATAR"
               :alt="comment.author"
               class="w-full h-full object-cover"
             />

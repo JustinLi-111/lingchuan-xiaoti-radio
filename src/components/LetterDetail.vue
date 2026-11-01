@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { X, MessageCircle, Send, Sparkles, Trash2 } from 'lucide-vue-next'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 import type { Letter, LetterComment } from '@/composables/useSupabaseStories'
+import { LINGCHUAN_AVATAR, XIAOHUA_AVATAR } from '@/lib/avatar'
 
 const props = defineProps<{
   letter: Letter
@@ -18,11 +19,11 @@ const { fetchLetterComments, submitLetterComment, deleteLetter, isAdmin } = useS
 const comments = ref<LetterComment[]>([])
 const isLoadingComments = ref(false)
 
+// 按段落拆开，让字迹一行行浮现出来
+const paragraphs = computed(() => props.letter.content.split('\n'))
+
 const newComment = ref('')
 const isSubmitting = ref(false)
-
-const LINGCHUAN_AVATAR = '/f52d1b93b90d9a847ca9761205376327.jpg'
-const TONGTONG_AVATAR = '/微信图片_2026-08-06_121603_195.jpg'
 
 onMounted(async () => {
   await loadComments()
@@ -44,7 +45,7 @@ const handleSubmitComment = async () => {
   isSubmitting.value = true
   
   const author = isAdmin.value ? '灵川' : '小华'
-  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : TONGTONG_AVATAR
+  const avatar = isAdmin.value ? LINGCHUAN_AVATAR : XIAOHUA_AVATAR
   const result = await submitLetterComment(
     props.letter.id,
     '',
@@ -85,7 +86,7 @@ const handleClose = () => {
           @click="handleClose"
         ></div>
         
-        <div class="relative w-full sm:max-w-2xl bg-[#f8f5ef] rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[95vh] flex flex-col animate-slideUp">
+        <div class="letter-sheet paper-grain relative w-full sm:max-w-2xl bg-[#f8f5ef] rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[95vh] flex flex-col">
           <div class="flex items-center justify-between p-4 md:p-6 border-b border-night-100 flex-shrink-0">
             <div>
               <div class="flex items-center gap-2 mb-1">
@@ -118,10 +119,16 @@ const handleClose = () => {
             </div>
           </div>
           
-          <div class="flex-[2] overflow-y-auto p-4 md:p-6 min-h-0">
-            <div class="letter-content whitespace-pre-wrap">
-              {{ letter.content }}
+          <div class="flex-[2] overflow-y-auto p-5 md:p-7 min-h-0">
+            <div class="letter-content">
+              <p
+                v-for="(paragraph, index) in paragraphs"
+                :key="index"
+                class="letter-line"
+                :style="{ animationDelay: `${Math.min(index * 45, 720)}ms` }"
+              >{{ paragraph || '\u00A0' }}</p>
             </div>
+            <span class="ink-sign">— 见字如面 —</span>
           </div>
           
           <div class="flex-[1] flex flex-col min-h-0 border-t border-night-100">
@@ -170,7 +177,7 @@ const handleClose = () => {
                   <div class="flex items-start gap-3">
                     <div class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                       <img
-                        :src="comment.avatar || TONGTONG_AVATAR"
+                        :src="comment.avatar || XIAOHUA_AVATAR"
                         :alt="comment.author"
                         class="w-full h-full object-cover"
                       />
@@ -208,11 +215,74 @@ const handleClose = () => {
   opacity: 0;
 }
 
+.letter-sheet {
+  animation: unfoldSheet 0.62s var(--ease-out-expo);
+  transform-origin: top center;
+}
+
+@keyframes unfoldSheet {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateX(-14deg) translateY(26px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1400px) rotateX(0deg) translateY(0) scale(1);
+  }
+}
+
+.letter-sheet::after {
+  content: '✦';
+  position: absolute;
+  right: -14px;
+  bottom: 30%;
+  font-size: 150px;
+  line-height: 1;
+  color: rgba(245, 166, 35, 0.07);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .letter-content {
+  position: relative;
+  z-index: 1;
   font-family: 'Noto Serif SC', serif;
   font-size: 15px;
-  line-height: 1.8;
+  line-height: 2;
   color: #2d3748;
+  letter-spacing: 0.02em;
+}
+
+.letter-line {
+  opacity: 0;
+  animation: inkIn 0.75s var(--ease-out-expo) forwards;
+  white-space: pre-wrap;
+}
+
+@keyframes inkIn {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+.ink-sign {
+  display: block;
+  text-align: right;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(120, 100, 70, 0.25);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: rgba(120, 100, 70, 0.5);
+  animation: inkIn 0.8s 0.7s var(--ease-out-expo) both;
 }
 
 .comment-item {

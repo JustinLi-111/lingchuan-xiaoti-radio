@@ -1,7 +1,6 @@
 <script setup lang="ts">import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Mail, PenLine, Sparkles, Eye } from 'lucide-vue-next';
-import StarryBackground from '@/components/StarryBackground.vue';
 import NavBar from '@/components/NavBar.vue';
 import LetterCard from '@/components/LetterCard.vue';
 import WriteLetterModal from '@/components/WriteLetterModal.vue';
@@ -48,15 +47,14 @@ onMounted(async () => {
 
 <template>
   <div class="relative min-h-screen overflow-hidden">
-    <StarryBackground />
     <NavBar />
     
     <div 
-      class="relative z-10 pt-24 pb-16 px-6 transition-all duration-1000 ease-out"
+      class="relative z-10 pt-24 pb-16 px-6 transition-all duration-700 ease-out"
       :class="showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
     >
       <!-- 标题区域 -->
-      <section class="max-w-4xl mx-auto py-8 md:py-12">
+      <section v-reveal class="max-w-4xl mx-auto py-8 md:py-12">
         <div class="text-center">
           <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-warm-500/10 border border-warm-500/20 mb-6">
             <Mail class="w-4 h-4 text-warm-400" />
@@ -114,10 +112,8 @@ onMounted(async () => {
           <div
             v-for="(letter, index) in letters"
             :key="letter.id"
+            v-reveal="Math.min(index * 90, 450)"
             class="relative group"
-            :style="{
-              animationDelay: `${index * 0.1}s`,
-            }"
           >
             <LetterCard :letter="letter" @open="handleOpenLetter" />
           </div>

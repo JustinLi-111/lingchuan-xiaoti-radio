@@ -21,6 +21,20 @@ const clearPassword = ref('')
 const clearPasswordError = ref('')
 const SECONDARY_PASSWORD = '520LJL0913111'
 
+// 磁吸：指针靠近时按钮轻轻跟过去一点
+const magnet = (e: MouseEvent) => {
+  if (window.innerWidth < 768) return
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  const dx = (e.clientX - (rect.left + rect.width / 2)) * 0.26
+  const dy = (e.clientY - (rect.top + rect.height / 2)) * 0.3
+  el.style.transform = `translate(${Math.max(-7, Math.min(7, dx))}px, ${Math.max(-5, Math.min(5, dy))}px)`
+}
+
+const release = (e: MouseEvent) => {
+  (e.currentTarget as HTMLElement).style.transform = ''
+}
+
 const goHome = () => {
   router.push('/home')
 }
@@ -105,27 +119,29 @@ onMounted(() => {
 </script>
 
 <template>
-  <nav class="fixed top-0 left-0 right-0 z-50 px-6 py-4">
-    <div class="max-w-4xl mx-auto flex items-center justify-between">
+  <nav class="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-3 md:py-4">
+    <div class="nav-shell max-w-4xl mx-auto flex items-center justify-between gap-2">
       <!-- Logo -->
       <button 
         @click="goHome"
-        class="flex items-center gap-2 group"
+        class="magnet-btn flex items-center gap-2 group px-2 py-1.5 rounded-xl"
+        @mousemove="magnet"
+        @mouseleave="release"
       >
-        <Sparkles class="w-5 h-5 text-warm-400 group-hover:text-warm-300 transition-colors" />
-        <span class="font-serif text-warm-100 tracking-wider text-sm hidden sm:inline">
+        <Sparkles class="w-5 h-5 text-warm-400 group-hover:text-warm-300 transition-colors duration-300" />
+        <span class="font-serif text-warm-100 tracking-[0.18em] text-sm hidden sm:inline">
           小华星空
         </span>
       </button>
       
       <!-- 导航链接 -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1 md:gap-2">
         <button
           @click="goHome"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
-          :class="route.path === '/home' 
-            ? 'bg-warm-500/20 text-warm-300' 
-            : 'text-night-400 hover:text-warm-300 hover:bg-white/5'"
+          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          :class="route.path === '/home' ? 'is-active' : ''"
+          @mousemove="magnet"
+          @mouseleave="release"
         >
           <Home class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">今夜星光</span>
@@ -133,10 +149,10 @@ onMounted(() => {
         
         <button
           @click="goArchive"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
-          :class="route.path === '/archive' 
-            ? 'bg-warm-500/20 text-warm-300' 
-            : 'text-night-400 hover:text-warm-300 hover:bg-white/5'"
+          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          :class="route.path === '/archive' ? 'is-active' : ''"
+          @mousemove="magnet"
+          @mouseleave="release"
         >
           <Library class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">时光留声</span>
@@ -144,10 +160,10 @@ onMounted(() => {
 
         <button
           @click="goMailbox"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
-          :class="route.path === '/mailbox' 
-            ? 'bg-warm-500/20 text-warm-300' 
-            : 'text-night-400 hover:text-warm-300 hover:bg-white/5'"
+          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          :class="route.path === '/mailbox' ? 'is-active' : ''"
+          @mousemove="magnet"
+          @mouseleave="release"
         >
           <Mail class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">时光信箱</span>
@@ -155,10 +171,10 @@ onMounted(() => {
 
         <button
           @click="goMoments"
-          class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
-          :class="route.path === '/moments' 
-            ? 'bg-warm-500/20 text-warm-300' 
-            : 'text-night-400 hover:text-warm-300 hover:bg-white/5'"
+          class="nav-item magnet-btn flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl"
+          :class="route.path === '/moments' ? 'is-active' : ''"
+          @mousemove="magnet"
+          @mouseleave="release"
         >
           <Star class="w-4 h-4" />
           <span class="text-sm hidden sm:inline">流星小记</span>
@@ -321,6 +337,43 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.nav-shell {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 20, 34, 0.55);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 40px -26px rgba(0, 0, 0, 0.9);
+}
+
+.nav-item {
+  color: rgba(148, 163, 184, 0.9);
+  transition:
+    color 0.35s var(--ease-glide, ease),
+    background 0.35s var(--ease-glide, ease),
+    border-color 0.35s var(--ease-glide, ease),
+    box-shadow 0.35s var(--ease-glide, ease),
+    transform 0.25s var(--ease-out-expo, ease);
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  color: #ffd9a8;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-item.is-active {
+  color: #ffd9a8;
+  background: linear-gradient(160deg, rgba(245, 166, 35, 0.22), rgba(245, 166, 35, 0.08));
+  border-color: rgba(245, 166, 35, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 24px -10px rgba(245, 166, 35, 0.9);
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }

@@ -51,6 +51,7 @@ export default {
       fontFamily: {
         'serif': ['"Noto Serif SC"', 'Georgia', 'serif'],
         'sans': ['"Noto Sans SC"', 'system-ui', 'sans-serif'],
+        'display': ['"Cormorant Garamond"', '"Noto Serif SC"', 'Georgia', 'serif'],
       },
       animation: {
         'breath': 'breath 4s ease-in-out infinite',
