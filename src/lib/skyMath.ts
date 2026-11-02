@@ -155,6 +155,7 @@ export interface MoonInfo {
 
 export interface SkySnapshot {
   sunAlt: number
+  sunAz: number
   moon: MoonInfo
   stars: SkyStar[]
 }
@@ -197,6 +198,7 @@ export const computeSky = (date: Date = new Date(), latDeg = OBSERVER.latitude, 
 
   return {
     sunAlt: sunH.alt,
+    sunAz: sunH.az,
     moon: {
       alt: moonH.alt,
       az: moonH.az,

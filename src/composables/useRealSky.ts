@@ -41,6 +41,7 @@ export const useRealSky = () => {
     moon: computed(() => snapshot.value?.moon ?? null),
     stars: computed(() => snapshot.value?.stars ?? []),
     sunAlt: computed(() => snapshot.value?.sunAlt ?? -60),
+    sunAz: computed(() => snapshot.value?.sunAz ?? 180),
     updatedAt,
   }
 }

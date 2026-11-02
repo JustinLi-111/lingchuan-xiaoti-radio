@@ -25,7 +25,7 @@ interface Meteor {
 }
 
 const { audioLevel, dim, onShootingStar } = useStarrySky()
-const { sky, sunAlt } = useRealSky()
+const { sky, sunAlt, sunAz } = useRealSky()
 const { weather, starDim } = useWeather()
 
 /* ---------------- 星野：一次性生成，避免重渲染时星星乱跳 ---------------- */
@@ -64,22 +64,60 @@ const onPointerMove = (e: PointerEvent) => {
 /* ---------------- 音频律动 ---------------- */
 const level = ref(0)
 
-/* ---------------- 时段色温 ---------------- */
+/* ---------------- 时段：从白昼到深夜的完整天色 ---------------- */
 const palettes = {
-  dawn: { top: '#121a34', mid: '#1a2542', low: '#080d1c', glow: 'rgba(148, 164, 255, 0.16)', tint: '#9fb4ff' },
-  day: { top: '#0a1426', mid: '#13263f', low: '#070e1b', glow: 'rgba(132, 176, 216, 0.14)', tint: '#a9c9ff' },
-  dusk: { top: '#1c1b3a', mid: '#17253f', low: '#0a0f22', glow: 'rgba(255, 160, 112, 0.2)', tint: '#ffb37a' },
-  night: { top: '#070c1a', mid: '#0d1b33', low: '#050a14', glow: 'rgba(96, 140, 210, 0.18)', tint: '#9cbde8' },
-  deep: { top: '#04060f', mid: '#0a1226', low: '#02040a', glow: 'rgba(78, 114, 186, 0.15)', tint: '#8aa8d8' },
+  dawn: {
+    top: '#1b2749',
+    mid: '#54517a',
+    low: '#c07a5c',
+    glow: 'rgba(255, 176, 120, 0.26)',
+    tint: '#ffc08a',
+    veil: 0.24,
+    horizon: 'rgba(255, 152, 96, 0.42)',
+  },
+  day: {
+    top: '#2b5c93',
+    mid: '#6ea3c9',
+    low: '#bfd0da',
+    glow: 'rgba(255, 238, 208, 0.3)',
+    tint: '#eaf2fb',
+    veil: 0.58,
+    horizon: 'rgba(255, 220, 160, 0.44)',
+  },
+  dusk: {
+    top: '#1a2246',
+    mid: '#5b4258',
+    low: '#c26a4c',
+    glow: 'rgba(255, 150, 104, 0.28)',
+    tint: '#ffb083',
+    veil: 0.26,
+    horizon: 'rgba(255, 122, 78, 0.46)',
+  },
+  night: {
+    top: '#070c1a',
+    mid: '#0d1b33',
+    low: '#050a14',
+    glow: 'rgba(96, 140, 210, 0.18)',
+    tint: '#9cbde8',
+    veil: 0,
+    horizon: 'rgba(96, 140, 210, 0.14)',
+  },
+  deep: {
+    top: '#04060f',
+    mid: '#0a1226',
+    low: '#02040a',
+    glow: 'rgba(78, 114, 186, 0.15)',
+    tint: '#8aa8d8',
+    veil: 0,
+    horizon: 'rgba(78, 114, 186, 0.12)',
+  },
 }
 
 const phase = computed(() => {
-  // 用真实太阳高度决定色温：仰角越高越亮，落到地平线下才真正入夜
+  // 用真实太阳高度决定天色：越高越亮，落到地平线下才真正入夜
   const alt = sunAlt.value
-  const hour = new Date().getHours()
   if (alt >= 8) return 'day'
-  if (alt >= -1) return hour < 12 ? 'dawn' : 'dusk'
-  if (alt >= -14) return hour < 12 ? 'dawn' : 'dusk'
+  if (alt >= -8) return sunAz.value < 180 ? 'dawn' : 'dusk'
   if (alt <= -28) return 'deep'
   return 'night'
 })
@@ -92,7 +130,25 @@ const skyVars = computed(() => ({
   '--sky-low': palette.value.low,
   '--sky-glow': palette.value.glow,
   '--sky-tint': palette.value.tint,
+  '--sky-horizon': palette.value.horizon,
 }))
+
+// 星光随太阳一起退场：太阳落下去以后才亮起来
+const starVisibility = computed(() => Math.min(1, Math.max(0, (-sunAlt.value - 2) / 6)))
+
+/* ---------------- 太阳：白昼、日出与日落 ---------------- */
+const isDaylight = computed(() => sunAlt.value > -4)
+
+const sunPlace = computed(() => {
+  const alt = sunAlt.value
+  const p = projectAltAz(alt, sunAz.value)
+  return {
+    x: Math.min(96, Math.max(4, p.x)),
+    y: Math.min(72, Math.max(2, p.y)),
+    core: alt >= 2 ? 1 : Math.max(0, (alt + 2) / 4),
+    halo: alt > -8 ? 0.16 + Math.min(0.34, Math.max(0, alt / 40)) : 0,
+  }
+})
 
 /* ---------------- 真实夜空：月亮与亮星 ---------------- */
 const moon = computed(() => sky.value?.moon ?? null)
@@ -108,8 +164,8 @@ const moonPlace = computed(() => {
   return {
     x: Math.min(92, Math.max(8, p.x)),
     y: Math.min(72, Math.max(6, p.y)),
-    // 月亮落到地平线以下就真的看不到，不再硬画在天上
-    opacity: m.visible ? 1 : 0,
+    // 月亮落到地平线以下就真的看不到，不再硬画在天上；白天只剩一轮淡淡的月
+    opacity: m.visible ? (sunAlt.value > 2 ? 0.34 : 1) : 0,
   }
 })
 
@@ -119,10 +175,13 @@ const moonHaloOpacity = computed(() => {
   return m.visible ? 0.12 + m.illumination * 0.5 : 0
 })
 
-/* 角落里的一行小字：今夜是哪个月，天上有多少颗亮星 */
+/* 角落里的一行小字：白天说太阳，入夜说月亮与亮星 */
 const skyLegend = computed(() => {
   const s = sky.value
   if (!s) return ''
+  if (sunAlt.value > 2) {
+    return `未央 · ${weather.value.label} · 太阳高 ${Math.round(sunAlt.value)}°`
+  }
   const m = s.moon
   const moonPart = m.visible ? `${m.phaseName} ${Math.round(m.illumination * 100)}%` : `${m.phaseName} 未升起`
   return `未央 · ${moonPart} · 亮星 ${s.stars.length}`
@@ -158,7 +217,10 @@ const constellationLines = computed(() => {
 })
 
 /* ---------------- 天气：西安未央此刻的云、雨、雪 ---------------- */
-const starLayerOpacity = computed(() => Math.max(0.4, starDim.value))
+const starLayerOpacity = computed(() => Math.max(0.4, starDim.value) * starVisibility.value)
+
+// 白天不画银河
+const milkyOpacity = computed(() => 0.85 * starVisibility.value)
 
 const showClouds = computed(
   () =>
@@ -176,6 +238,12 @@ const clouds = [
   { x: 62, y: 26, w: 340, h: 120, delay: 6, duration: 92 },
   { x: 4, y: 34, w: 420, h: 140, delay: 32, duration: 80 },
 ]
+
+// 云量越厚，天上的云越多
+const visibleClouds = computed(() => {
+  const count = Math.round(Math.max(0.25, weather.value.cloudCover / 100) * clouds.length)
+  return clouds.slice(0, Math.max(2, count))
+})
 
 interface Drop {
   x: number
@@ -229,6 +297,8 @@ let meteorSeq = 0
 let autoMeteorTimer: number | undefined
 
 const spawnMeteor = () => {
+  // 白天看不见流星
+  if (starVisibility.value < 0.35) return
   const id = ++meteorSeq
   const duration = rand(900, 1500)
 
@@ -291,7 +361,7 @@ onUnmounted(() => {
     <div class="sky-base" />
 
     <!-- 银河带 -->
-    <div class="milky-way" />
+    <div class="milky-way" :style="{ opacity: milkyOpacity }" />
 
     <!-- 星层：远 / 中 / 近，三层不同视差；云量越高越暗 -->
     <div
@@ -401,6 +471,18 @@ onUnmounted(() => {
     />
     <div class="glow glow-c aurora" :style="{ transform: `translate3d(${pointer.x * 18}px, ${pointer.y * 12}px, 0)` }" />
 
+    <!-- 地平线上的光：日出日落时最浓 -->
+    <div class="horizon-glow" :style="{ left: sunPlace.x + '%' }" />
+
+    <!-- 白昼滤光：压暗天幕与光晕；太阳、月亮、云画在它上面，才不会被一起压灰 -->
+    <div class="day-veil" :style="{ opacity: palette.veil }" />
+
+    <!-- 太阳：跟着真实方位与高度走 -->
+    <div class="sun-wrap" :style="{ left: sunPlace.x + '%', top: sunPlace.y + '%' }">
+      <div class="sun-halo" :style="{ opacity: sunPlace.halo }" />
+      <div class="sun-core" :style="{ opacity: sunPlace.core }" />
+    </div>
+
     <!-- 月亮：真实月相与真实位置 -->
     <div
       class="moon-wrap"
@@ -442,9 +524,9 @@ onUnmounted(() => {
     </div>
 
     <!-- 天气：西安未央此刻的云、雨、雪 -->
-    <div v-if="showClouds" class="cloud-layer" :style="{ opacity: cloudOpacity }">
+    <div v-if="showClouds" class="cloud-layer" :class="{ 'is-day': sunAlt > 4 }" :style="{ opacity: cloudOpacity }">
       <span
-        v-for="(cloud, index) in clouds"
+        v-for="(cloud, index) in visibleClouds"
         :key="index"
         class="cloud"
         :style="{
@@ -510,12 +592,12 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 底部沉入夜色 -->
+    <!-- 底部的夜与压暗 -->
     <div class="bottom-fade" />
     <div class="vignette" />
 
     <!-- 角落的天象小字 -->
-    <p v-if="skyLegend && sunAlt < 0" class="sky-legend">{{ skyLegend }}</p>
+    <p v-if="skyLegend" class="sky-legend">{{ skyLegend }}</p>
   </div>
 </template>
 
@@ -534,6 +616,7 @@ onUnmounted(() => {
   inset: 0;
   background:
     radial-gradient(120% 70% at 50% 0%, var(--sky-mid) 0%, transparent 62%),
+    radial-gradient(90% 46% at 50% 104%, var(--sky-horizon) 0%, transparent 70%),
     linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 42%, var(--sky-low) 100%);
   transition: background 2.5s var(--ease-glide);
 }
@@ -626,6 +709,61 @@ onUnmounted(() => {
   height: 300px;
   border-radius: 42% 58% 46% 54%;
   opacity: 0.4;
+}
+
+/* 地平线光 */
+.horizon-glow {
+  position: absolute;
+  bottom: -14%;
+  width: 70%;
+  height: 46%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at 50% 100%, var(--sky-horizon) 0%, transparent 68%);
+  filter: blur(18px);
+  opacity: 0.72;
+  transition:
+    left 4s var(--ease-glide),
+    opacity 2.5s var(--ease-glide);
+}
+
+/* 太阳 */
+.sun-wrap {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  transition:
+    left 4s var(--ease-glide),
+    top 4s var(--ease-glide);
+}
+
+.sun-core {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffdf2 0%, #ffe7b4 46%, rgba(255, 196, 120, 0.7) 100%);
+  box-shadow:
+    0 0 26px 10px rgba(255, 214, 150, 0.55),
+    0 0 70px 30px rgba(255, 186, 110, 0.22);
+  transition: opacity 2.2s var(--ease-glide);
+}
+
+.sun-halo {
+  position: absolute;
+  left: -220px;
+  top: -220px;
+  width: 454px;
+  height: 454px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 236, 196, 0.34) 0%,
+    rgba(255, 206, 140, 0.16) 34%,
+    rgba(255, 186, 110, 0.05) 56%,
+    transparent 72%
+  );
+  filter: blur(8px);
+  transition: opacity 2.2s var(--ease-glide);
 }
 
 /* 月亮 */
@@ -748,6 +886,14 @@ onUnmounted(() => {
   background: radial-gradient(130% 100% at 50% 40%, transparent 46%, rgba(2, 5, 12, 0.55) 100%);
 }
 
+/* 白昼滤光：让亮起来的天空不为难文字 */
+.day-veil {
+  position: absolute;
+  inset: 0;
+  background: #070b1a;
+  transition: opacity 2.5s var(--ease-glide);
+}
+
 /* 真实星空 */
 .real-sky {
   position: absolute;
@@ -817,6 +963,15 @@ onUnmounted(() => {
 
 .cloud-layer {
   transition: opacity 2.4s var(--ease-glide);
+}
+
+.cloud-layer.is-day .cloud {
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    rgba(255, 255, 255, 0.66) 0%,
+    rgba(226, 236, 248, 0.34) 44%,
+    transparent 72%
+  );
 }
 
 .cloud {

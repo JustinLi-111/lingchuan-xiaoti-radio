@@ -264,6 +264,8 @@ onUnmounted(() => {
 
 /* ---------- 卡片 ---------- */
 .entry-card {
+  /* 白昼天幕会变亮，卡片自己压深一点，字才一直看得清 */
+  background: linear-gradient(160deg, rgba(13, 19, 38, 0.72), rgba(7, 11, 24, 0.58));
   transition: transform 0.7s var(--ease-out-expo), box-shadow 0.7s ease, filter 0.7s ease;
 }
 
@@ -337,7 +339,7 @@ onUnmounted(() => {
 }
 
 .field-input::placeholder {
-  color: rgba(148, 163, 184, 0.55);
+  color: rgba(214, 226, 246, 0.58);
   letter-spacing: 0.3em;
   font-size: 13px;
 }
