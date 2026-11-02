@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Home, Library, Mail, Sparkles, LogOut, Settings, Plus, X, Lock, Trash2, AlertTriangle, Star } from 'lucide-vue-next'
+import { Home, Library, Mail, Sparkles, LogOut, Settings, Plus, X, Lock, Trash2, AlertTriangle, Star, Activity } from 'lucide-vue-next'
+import AdminPanel from '@/components/AdminPanel.vue'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
 
 const emit = defineEmits<{
@@ -13,6 +14,7 @@ const route = useRoute()
 const { isAdmin, loginAdmin, logoutAdmin, checkAdmin, clearAllData } = useSupabaseStories()
 
 const showAdminModal = ref(false)
+const showAdminPanel = ref(false)
 const adminPassword = ref('')
 const adminError = ref('')
 const showClearModal = ref(false)
@@ -166,6 +168,17 @@ onMounted(() => {
           <span class="text-sm hidden sm:inline">上传新故事</span>
         </button>
 
+        <!-- 观测台 -->
+        <button
+          v-if="isAdmin"
+          @click="showAdminPanel = true"
+          class="flex items-center gap-2 px-3 py-2 rounded-xl text-warm-300/85 hover:text-warm-200 hover:bg-white/5 transition-all duration-300"
+          title="打开观测台"
+        >
+          <Activity class="w-4 h-4" />
+          <span class="text-sm hidden sm:inline">观测台</span>
+        </button>
+
         <!-- 清除数据按钮 -->
         <button
           v-if="isAdmin"
@@ -203,6 +216,13 @@ onMounted(() => {
         </button>
       </div>
     </div>
+
+    <!-- 观测台（管理员） -->
+    <AdminPanel
+      :visible="showAdminPanel"
+      @close="showAdminPanel = false"
+      @open-upload="emit('openUpload')"
+    />
 
     <!-- 管理员登录弹窗 -->
     <Teleport to="body">

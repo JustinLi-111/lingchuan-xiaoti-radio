@@ -211,6 +211,71 @@ export const computeSky = (date: Date = new Date(), latDeg = OBSERVER.latitude, 
   }
 }
 
+/** 月亮此刻的地平高度：给月出月落扫描用 */
+export const moonAltitudeAt = (date: Date, latDeg = OBSERVER.latitude, lonDeg = OBSERVER.longitude) => {
+  const d = daysSinceJ2000(date)
+  const lst = norm360(greenwichSiderealTime(d) + lonDeg)
+  const equ = eclipticToEquatorial(norm360(sunLongitude(d) + moonPhaseAngle(d)), d)
+  return equatorialToHorizontal(equ.ra, equ.dec, lst, latDeg).alt
+}
+
+/** 太阳此刻的地平高度：给日出日落扫描用 */
+export const sunAltitudeAt = (date: Date, latDeg = OBSERVER.latitude, lonDeg = OBSERVER.longitude) => {
+  const d = daysSinceJ2000(date)
+  const lst = norm360(greenwichSiderealTime(d) + lonDeg)
+  const equ = eclipticToEquatorial(sunLongitude(d), d)
+  return equatorialToHorizontal(equ.ra, equ.dec, lst, latDeg).alt
+}
+
+/** 在这一天里找升落时刻（每 5 分钟采样一次） */
+export const findRiseSet = (kind: 'sun' | 'moon', day: Date = new Date()) => {
+  const start = new Date(day)
+  start.setHours(0, 0, 0, 0)
+  const sample = kind === 'sun' ? sunAltitudeAt : moonAltitudeAt
+
+  let prev = sample(start)
+  let rise: Date | null = null
+  let set: Date | null = null
+
+  for (let minute = 5; minute <= 1440; minute += 5) {
+    const at = new Date(start.getTime() + minute * 60000)
+    const alt = sample(at)
+    if (!rise && prev < 0 && alt >= 0) rise = at
+    if (!set && prev >= 0 && alt < 0) set = at
+    prev = alt
+  }
+
+  return { rise, set }
+}
+
+/** 中间量的完整快照：管理员面板里展示"怎么算出来的" */
+export const skyDebug = (date: Date = new Date(), latDeg = OBSERVER.latitude, lonDeg = OBSERVER.longitude) => {
+  const d = daysSinceJ2000(date)
+  const lst = norm360(greenwichSiderealTime(d) + lonDeg)
+  const elongation = moonPhaseAngle(d)
+
+  const sunEqu = eclipticToEquatorial(sunLongitude(d), d)
+  const moonEqu = eclipticToEquatorial(norm360(sunLongitude(d) + elongation), d)
+  const sunH = equatorialToHorizontal(sunEqu.ra, sunEqu.dec, lst, latDeg)
+  const moonH = equatorialToHorizontal(moonEqu.ra, moonEqu.dec, lst, latDeg)
+
+  return {
+    d,
+    sunLongitude: sunLongitude(d),
+    elongation,
+    lst,
+    sunRa: sunEqu.ra,
+    sunDec: sunEqu.dec,
+    moonRa: moonEqu.ra,
+    moonDec: moonEqu.dec,
+    sunAlt: sunH.alt,
+    sunAz: sunH.az,
+    moonAlt: moonH.alt,
+    moonAz: moonH.az,
+    illumination: (1 - Math.cos(elongation * DEG)) / 2,
+  }
+}
+
 /** 屏幕上的投影：把整片天空当作一幅 360° 长卷 */
 export const projectAltAz = (alt: number, az: number) => ({
   x: 4 + (az / 360) * 92,
