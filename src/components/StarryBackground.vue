@@ -479,8 +479,12 @@ onUnmounted(() => {
 
     <!-- 太阳：跟着真实方位与高度走 -->
     <div class="sun-wrap" :style="{ left: sunPlace.x + '%', top: sunPlace.y + '%' }">
-      <div class="sun-halo" :style="{ opacity: sunPlace.halo }" />
-      <div class="sun-core" :style="{ opacity: sunPlace.core }" />
+      <div class="sun-c" :style="{ opacity: sunPlace.halo * 1.3 + 0.04 }" />
+      <div class="sun-b" :style="{ opacity: sunPlace.halo * 1.1 + 0.04 }" />
+      <div class="sun-a" :style="{ opacity: sunPlace.halo * 0.9 + 0.04 }" />
+      <div class="sun-core" :style="{ opacity: sunPlace.core }">
+        <div class="sun-surface" />
+      </div>
     </div>
 
     <!-- 月亮：真实月相与真实位置 -->
@@ -502,23 +506,58 @@ onUnmounted(() => {
       />
       <svg class="moon-svg" viewBox="0 0 100 100">
         <defs>
-          <radialGradient id="moonFace" cx="34%" cy="30%" r="80%">
-            <stop offset="0%" stop-color="#fffdf5" />
-            <stop offset="46%" stop-color="#f7ecd2" />
-            <stop offset="82%" stop-color="#e2d0a9" />
-            <stop offset="100%" stop-color="#cdb88c" />
+          <radialGradient id="moonFace" cx="32%" cy="28%" r="84%">
+            <stop offset="0%" stop-color="#fffaf0" />
+            <stop offset="14%" stop-color="#fbf0d6" />
+            <stop offset="40%" stop-color="#efdcb2" />
+            <stop offset="70%" stop-color="#d8bf8a" />
+            <stop offset="100%" stop-color="#b89e6a" />
+          </radialGradient>
+          <radialGradient id="moonMar" cx="40%" cy="42%" r="60%">
+            <stop offset="0%" stop-color="#8a7452" stop-opacity="0.55" />
+            <stop offset="60%" stop-color="#8a7452" stop-opacity="0.22" />
+            <stop offset="100%" stop-color="#8a7452" stop-opacity="0" />
           </radialGradient>
           <clipPath id="moonLit">
             <path :d="moonPath" />
           </clipPath>
+          <clipPath id="moonFull">
+            <circle cx="50" cy="50" r="46" />
+          </clipPath>
+          <filter id="moonRough">
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" />
+            <feColorMatrix values="0 0 0 0 0.52  0 0 0 0 0.44  0 0 0 0 0.32  0 0 0 0.28 0" />
+            <feComposite in2="SourceGraphic" operator="in" />
+          </filter>
         </defs>
+
+        <!-- 地球反照：暗面的轮廓 -->
         <circle cx="50" cy="50" r="46" class="moon-earthshine" />
+
+        <!-- 未裁剪的整张月面阴影（让月影看起来立体） -->
         <path :d="moonPath" fill="url(#moonFace)" class="moon-face" />
+
+        <!-- 月海（大斑块，只在亮面出现） -->
+        <g clip-path="url(#moonLit)">
+          <ellipse cx="38" cy="40" rx="14" ry="10" fill="url(#moonMar)" />
+          <ellipse cx="60" cy="60" rx="10" ry="7" fill="url(#moonMar)" />
+          <ellipse cx="68" cy="38" rx="8" ry="6" fill="url(#moonMar)" />
+          <ellipse cx="45" cy="70" rx="9" ry="6" fill="url(#moonMar)" />
+        </g>
+
+        <!-- 陨石坑（小圆环，有阴影） -->
         <g clip-path="url(#moonLit)" class="crater-group">
-          <circle cx="34" cy="36" r="9" />
-          <circle cx="57" cy="59" r="7" />
-          <circle cx="41" cy="67" r="5" />
-          <circle cx="65" cy="31" r="4" />
+          <circle cx="34" cy="36" r="5" />
+          <circle cx="34" cy="36" r="2.6" />
+          <circle cx="57" cy="59" r="4" />
+          <circle cx="57" cy="59" r="2" />
+          <circle cx="41" cy="67" r="3" />
+          <circle cx="41" cy="67" r="1.4" />
+          <circle cx="65" cy="31" r="2.4" />
+          <circle cx="65" cy="31" r="1.2" />
+          <circle cx="48" cy="48" r="1.8" />
+          <circle cx="60" cy="42" r="1.6" />
+          <circle cx="30" cy="58" r="1.4" />
         </g>
       </svg>
     </div>
@@ -729,9 +768,9 @@ onUnmounted(() => {
 /* 太阳 */
 .sun-wrap {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
   transition:
     left 4s var(--ease-glide),
     top 4s var(--ease-glide);
@@ -741,29 +780,94 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, #fffdf2 0%, #ffe7b4 46%, rgba(255, 196, 120, 0.7) 100%);
+  background:
+    radial-gradient(circle at 38% 34%, #fffdf3 0%, rgba(255, 240, 190, 0) 38%),
+    radial-gradient(circle, #ffe39a 0%, #ffc55b 48%, #ff9a2e 82%, rgba(255, 130, 30, 0) 100%);
   box-shadow:
-    0 0 26px 10px rgba(255, 214, 150, 0.55),
-    0 0 70px 30px rgba(255, 186, 110, 0.22);
+    0 0 40px 14px rgba(255, 200, 110, 0.5),
+    0 0 90px 34px rgba(255, 160, 60, 0.26),
+    0 0 160px 70px rgba(255, 140, 40, 0.12);
+  transition: opacity 2.2s var(--ease-glide);
+  overflow: hidden;
+}
+
+.sun-surface {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 65% 55%, rgba(255, 230, 160, 0.38) 0%, transparent 40%),
+    radial-gradient(circle at 30% 70%, rgba(255, 170, 80, 0.34) 0%, transparent 36%),
+    radial-gradient(circle at 55% 25%, rgba(255, 210, 120, 0.3) 0%, transparent 30%);
+  animation: sunSurface 14s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sunSurface {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: rotate(15deg) scale(1.04);
+    opacity: 1;
+  }
+}
+
+/* 三层外晕：越外越大越虚 */
+.sun-a,
+.sun-b,
+.sun-c {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
   transition: opacity 2.2s var(--ease-glide);
 }
 
-.sun-halo {
-  position: absolute;
-  left: -220px;
-  top: -220px;
-  width: 454px;
-  height: 454px;
-  border-radius: 50%;
+.sun-a {
+  left: -120px;
+  top: -120px;
+  width: 304px;
+  height: 304px;
   background: radial-gradient(
     circle,
-    rgba(255, 236, 196, 0.34) 0%,
-    rgba(255, 206, 140, 0.16) 34%,
-    rgba(255, 186, 110, 0.05) 56%,
-    transparent 72%
+    rgba(255, 230, 170, 0.42) 0%,
+    rgba(255, 200, 130, 0.18) 32%,
+    rgba(255, 170, 90, 0.06) 58%,
+    transparent 76%
   );
-  filter: blur(8px);
-  transition: opacity 2.2s var(--ease-glide);
+  filter: blur(4px);
+}
+
+.sun-b {
+  left: -240px;
+  top: -240px;
+  width: 544px;
+  height: 544px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 210, 140, 0.22) 0%,
+    rgba(255, 180, 100, 0.1) 32%,
+    rgba(255, 160, 80, 0.03) 58%,
+    transparent 78%
+  );
+  filter: blur(10px);
+}
+
+.sun-c {
+  left: -420px;
+  top: -420px;
+  width: 904px;
+  height: 904px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 180, 110, 0.12) 0%,
+    rgba(255, 160, 90, 0.05) 30%,
+    rgba(255, 140, 70, 0.015) 60%,
+    transparent 80%
+  );
+  filter: blur(22px);
 }
 
 /* 月亮 */
@@ -771,9 +875,9 @@ onUnmounted(() => {
   position: absolute;
   left: 82%;
   top: 12%;
-  width: 96px;
-  height: 96px;
-  margin-left: -48px;
+  width: 128px;
+  height: 128px;
+  margin-left: -64px;
   transition:
     left 3s var(--ease-glide),
     top 3s var(--ease-glide),
@@ -784,11 +888,18 @@ onUnmounted(() => {
 
 .moon-halo {
   position: absolute;
-  inset: -34px;
+  inset: -48px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 236, 200, 0.22) 0%, rgba(255, 236, 200, 0.08) 45%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(220, 232, 255, 0.26) 0%,
+    rgba(200, 216, 248, 0.1) 40%,
+    rgba(170, 196, 236, 0.03) 66%,
+    transparent 82%
+  );
   animation: moonBreath 9s ease-in-out infinite;
   transition: opacity 1.6s var(--ease-glide);
+  filter: blur(2px);
 }
 
 .moon-svg {
@@ -797,12 +908,13 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   display: block;
-  filter: drop-shadow(0 0 20px rgba(255, 236, 200, 0.28));
+  filter: drop-shadow(0 0 16px rgba(220, 232, 255, 0.3))
+    drop-shadow(0 0 38px rgba(180, 200, 240, 0.18));
 }
 
 .moon-earthshine {
-  fill: rgba(255, 242, 220, 0.07);
-  stroke: rgba(255, 242, 220, 0.12);
+  fill: rgba(200, 216, 240, 0.04);
+  stroke: rgba(200, 216, 240, 0.1);
   stroke-width: 1;
 }
 
@@ -811,7 +923,9 @@ onUnmounted(() => {
 }
 
 .crater-group circle {
-  fill: rgba(176, 156, 124, 0.32);
+  fill: rgba(120, 100, 72, 0.42);
+  stroke: rgba(96, 80, 56, 0.3);
+  stroke-width: 0.6;
 }
 
 @keyframes moonBreath {
@@ -1086,10 +1200,34 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
+  .sun-wrap {
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+  }
+
+  .sun-a {
+    left: -90px;
+    top: -90px;
+    width: 224px;
+    height: 224px;
+  }
+
+  .sun-b {
+    left: -170px;
+    top: -170px;
+    width: 384px;
+    height: 384px;
+  }
+
   .moon-wrap {
-    width: 64px;
-    height: 64px;
-    margin-left: -32px;
+    width: 84px;
+    height: 84px;
+    margin-left: -42px;
+  }
+
+  .moon-halo {
+    inset: -30px;
   }
 
   .glow-a {
