@@ -1,9 +1,10 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useStarrySky } from '@/composables/useStarrySky'
 import { useRealSky } from '@/composables/useRealSky'
 import { useWeather } from '@/composables/useWeather'
-import { CONSTELLATION_LINES, moonLitPath, projectAltAz } from '@/lib/skyMath'
+import { useSkySnapshot } from '@/composables/useSkySnapshot'
+import { CONSTELLATION_LINES, computeSky, moonLitPath, projectAltAz } from '@/lib/skyMath'
 
 interface Star {
   x: number
@@ -27,6 +28,23 @@ interface Meteor {
 const { audioLevel, dim, onShootingStar } = useStarrySky()
 const { sky, sunAlt, sunAz } = useRealSky()
 const { weather, starDim } = useWeather()
+const { targetDate, targetMeta } = useSkySnapshot()
+
+/* 快照优先：如果锁了"那一夜"，所有天文量用重算值 */
+const snapshotSky = computed(() => targetDate.value ? computeSky(targetDate.value) : null)
+const effectiveSky = computed(() => snapshotSky.value ?? sky.value)
+const effectiveSunAlt = computed(() => effectiveSky.value?.sunAlt ?? sunAlt.value)
+const effectiveSunAz = computed(() => effectiveSky.value?.sunAz ?? sunAz.value)
+const effectiveMoon = computed(() => effectiveSky.value?.moon ?? null)
+const snapshotBanner = computed(() => {
+  if (!snapshotSky.value || !targetMeta.value) return null
+  const d = targetDate.value!
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return {
+    text: `这是 ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} 那晚的西安未央 · ${snapshotSky.value.moon.phaseName}`,
+    storyTitle: targetMeta.value.title,
+  }
+})
 
 /* ---------------- 星野：一次性生成，避免重渲染时星星乱跳 ---------------- */
 const rand = (min: number, max: number) => Math.random() * (max - min) + min
@@ -115,9 +133,9 @@ const palettes = {
 
 const phase = computed(() => {
   // 用真实太阳高度决定天色：越高越亮，落到地平线下才真正入夜
-  const alt = sunAlt.value
+  const alt = effectiveSunAlt.value
   if (alt >= 8) return 'day'
-  if (alt >= -8) return sunAz.value < 180 ? 'dawn' : 'dusk'
+  if (alt >= -8) return effectiveSunAz.value < 180 ? 'dawn' : 'dusk'
   if (alt <= -28) return 'deep'
   return 'night'
 })
@@ -134,14 +152,14 @@ const skyVars = computed(() => ({
 }))
 
 // 星光随太阳一起退场：太阳落下去以后才亮起来
-const starVisibility = computed(() => Math.min(1, Math.max(0, (-sunAlt.value - 2) / 6)))
+const starVisibility = computed(() => Math.min(1, Math.max(0, (-effectiveSunAlt.value - 2) / 6)))
 
 /* ---------------- 太阳：白昼、日出与日落 ---------------- */
-const isDaylight = computed(() => sunAlt.value > -4)
+const isDaylight = computed(() => effectiveSunAlt.value > -4)
 
 const sunPlace = computed(() => {
-  const alt = sunAlt.value
-  const p = projectAltAz(alt, sunAz.value)
+  const alt = effectiveSunAlt.value
+  const p = projectAltAz(alt, effectiveSunAz.value)
   return {
     x: Math.min(96, Math.max(4, p.x)),
     y: Math.min(72, Math.max(2, p.y)),
@@ -151,36 +169,37 @@ const sunPlace = computed(() => {
 })
 
 /* ---------------- 真实夜空：月亮与亮星 ---------------- */
-const moon = computed(() => sky.value?.moon ?? null)
 
 const moonPath = computed(() =>
-  moon.value ? moonLitPath(moon.value.illumination, moon.value.waxing) : moonLitPath(0.5, true),
+  effectiveMoon.value ? moonLitPath(effectiveMoon.value.illumination, effectiveMoon.value.waxing) : moonLitPath(0.5, true),
 )
 
 const moonPlace = computed(() => {
-  const m = moon.value
+  const m = effectiveMoon.value
   if (!m) return { x: 82, y: 12, opacity: 1 }
   const p = projectAltAz(m.alt, m.az)
   return {
     x: Math.min(92, Math.max(8, p.x)),
     y: Math.min(72, Math.max(6, p.y)),
     // 月亮落到地平线以下就真的看不到，不再硬画在天上；白天只剩一轮淡淡的月
-    opacity: m.visible ? (sunAlt.value > 2 ? 0.34 : 1) : 0,
+    opacity: m.visible ? (effectiveSunAlt.value > 2 ? 0.34 : 1) : 0,
   }
 })
 
 const moonHaloOpacity = computed(() => {
-  const m = moon.value
+  const m = effectiveMoon.value
   if (!m) return 0.22
   return m.visible ? 0.12 + m.illumination * 0.5 : 0
 })
 
-/* 角落里的一行小字：白天说太阳，入夜说月亮与亮星 */
+/* 角落里的一行小字：白天说太阳，入夜说月亮与亮星；快照优先显示"那一夜" */
 const skyLegend = computed(() => {
-  const s = sky.value
+  // 快照模式：直接显示"这是那晚的..."
+  if (snapshotBanner.value) return snapshotBanner.value.text
+  const s = effectiveSky.value
   if (!s) return ''
-  if (sunAlt.value > 2) {
-    return `未央 · ${weather.value.label} · 太阳高 ${Math.round(sunAlt.value)}°`
+  if (effectiveSunAlt.value > 2) {
+    return `未央 · ${weather.value.label} · 太阳高 ${Math.round(effectiveSunAlt.value)}°`
   }
   const m = s.moon
   const moonPart = m.visible ? `${m.phaseName} ${Math.round(m.illumination * 100)}%` : `${m.phaseName} 未升起`
@@ -188,7 +207,7 @@ const skyLegend = computed(() => {
 })
 
 const realStars = computed(() =>
-  (sky.value?.stars ?? []).map((star) => {
+  (effectiveSky.value?.stars ?? []).map((star) => {
     const p = projectAltAz(star.alt, star.az)
     return {
       ...star,
@@ -515,7 +534,7 @@ onUnmounted(() => {
         class="moon-halo"
         :style="{
           opacity: moonHaloOpacity,
-          transform: `scale(${0.86 + (moon ? moon.illumination : 0.5) * 0.34})`,
+          transform: `scale(${0.86 + (effectiveMoon ? effectiveMoon.illumination : 0.5) * 0.34})`,
         }"
       />
       <!-- 月球本体 -->
@@ -638,7 +657,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 天气：西安未央此刻的云、雨、雪 -->
-    <div v-if="showClouds" class="cloud-layer" :class="{ 'is-day': sunAlt > 4 }" :style="{ opacity: cloudOpacity }">
+    <div v-if="showClouds" class="cloud-layer" :class="{ 'is-day': effectiveSunAlt > 4 }" :style="{ opacity: cloudOpacity }">
       <span
         v-for="(cloud, index) in visibleClouds"
         :key="index"
@@ -712,6 +731,15 @@ onUnmounted(() => {
 
     <!-- 角落的天象小字 -->
     <p v-if="skyLegend" class="sky-legend">{{ skyLegend }}</p>
+
+    <!-- 快照模式 banner：你正在看"那一夜"的星空 -->
+    <transition name="snapshot-fade">
+      <div v-if="snapshotBanner" class="snapshot-banner">
+        <span class="sb-dot" />
+        <span class="sb-text">{{ snapshotBanner.text }}</span>
+        <span class="sb-sub">点开「{{ snapshotBanner.storyTitle }}」那晚的天幕</span>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -1244,5 +1272,55 @@ onUnmounted(() => {
     width: 240px;
     height: 240px;
   }
+}
+
+/* ---------- 快照 banner：你正在看"那一夜" ---------- */
+.snapshot-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 14px;
+  background: rgba(8, 10, 24, 0.82);
+  border: 1px solid rgba(200, 220, 255, 0.22);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: #c8e0ff;
+  font-family: ui-monospace, Menlo, monospace;
+  z-index: 5;
+  box-shadow: 0 4px 30px rgba(30, 60, 120, 0.2);
+  pointer-events: none;
+}
+.snapshot-banner .sb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9ec6ff;
+  box-shadow: 0 0 8px rgba(158, 198, 255, 0.7);
+  animation: sbPulse 2.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.snapshot-banner .sb-text {
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+.snapshot-banner .sb-sub {
+  color: rgba(200, 220, 255, 0.45);
+  font-size: 10px;
+}
+@keyframes sbPulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+.snapshot-fade-enter-active, .snapshot-fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.snapshot-fade-enter-from, .snapshot-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(14px);
 }
 </style>

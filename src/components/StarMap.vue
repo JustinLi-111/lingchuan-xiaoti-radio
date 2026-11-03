@@ -4,7 +4,10 @@ import { ZoomIn, ZoomOut, Maximize2, X, Play } from 'lucide-vue-next'
 import type { Story } from '@/composables/useSupabaseStories'
 
 const props = defineProps<{ stories: Story[] }>()
-const emit = defineEmits<{ (e: 'play', story: Story): void }>()
+const emit = defineEmits<{
+  (e: 'play', story: Story): void
+  (e: 'select', story: Story | null): void
+}>()
 
 const MAP_W = 1200
 const MAP_H = 800
@@ -298,12 +301,18 @@ const onPointerUp = (e: PointerEvent) => {
         nearest = star
       }
     }
-    if (nearest) selected.value = nearest.story
+    if (nearest) {
+      selected.value = nearest.story
+      emit('select', nearest.story)
+    } else {
+      emit('select', null)
+    }
   }
 }
 
 const selectStar = (star: MapStar) => {
   selected.value = star.story
+  emit('select', star.story)
 }
 
 let hasFit = false
@@ -372,7 +381,7 @@ watch(
           :class="{ 'is-selected': selected?.id === star.story.id }"
           @pointerenter="hovered = star"
           @pointerleave="hovered = null"
-          @click.stop="selected = star.story"
+          @click.stop="selectStar(star)"
         >
           <circle :cx="star.x" :cy="star.y" :r="hitRadius" fill="transparent" />
           <circle

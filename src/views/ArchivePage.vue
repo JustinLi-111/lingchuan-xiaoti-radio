@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Library, Sparkles, Plus, ChevronDown } from 'lucide-vue-next'
 import NavBar from '@/components/NavBar.vue'
@@ -7,15 +7,35 @@ import StoryCard from '@/components/StoryCard.vue'
 import StarMap from '@/components/StarMap.vue'
 import UploadStoryModal from '@/components/UploadStoryModal.vue'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
+import { useSkySnapshot } from '@/composables/useSkySnapshot'
 import type { Story } from '@/composables/useSupabaseStories'
 
 const router = useRouter()
 const { stories, isAdmin, fetchStories, checkAdmin, deleteStory, init } = useSupabaseStories()
+const { lock: lockSnapshot, unlock: unlockSnapshot } = useSkySnapshot()
 
 const showContent = ref(false)
 const showUploadModal = ref(false)
 const showEasterEgg = ref(false)
 const showMap = ref(false)
+
+// 星图开关 → 关闭时恢复实时天幕
+watch(showMap, (open) => {
+  if (!open) unlockSnapshot()
+})
+
+// 星图点中某颗星 → 天幕切到那晚 23:00
+const handleStarSelect = (story: Story | null) => {
+  if (!story) {
+    unlockSnapshot()
+    return
+  }
+  lockSnapshot(story.created_at, {
+    id: story.id,
+    title: story.title,
+    subtitle: story.subtitle ?? `第 ${story.star_number ?? story.id} 颗星`,
+  })
+}
 
 const handlePlay = (story: Story) => {
   router.push({ path: '/home', query: { storyId: story.id } })
@@ -159,7 +179,7 @@ onMounted(async () => {
         </button>
 
         <div v-if="showMap" class="mt-4">
-          <StarMap :stories="stories" @play="handlePlay" />
+          <StarMap :stories="stories" @play="handlePlay" @select="handleStarSelect" />
         </div>
       </section>
       
