@@ -477,17 +477,68 @@ onUnmounted(() => {
     <!-- 白昼滤光：压暗天幕与光晕；太阳、月亮、云画在它上面，才不会被一起压灰 -->
     <div class="day-veil" :style="{ opacity: palette.veil }" />
 
-    <!-- 太阳：跟着真实方位与高度走 -->
+    <!-- 太阳：写实 SVG 等离子体 + 日冕 + 耀斑 -->
     <div class="sun-wrap" :style="{ left: sunPlace.x + '%', top: sunPlace.y + '%' }">
-      <div class="sun-c" :style="{ opacity: sunPlace.halo * 1.3 + 0.04 }" />
-      <div class="sun-b" :style="{ opacity: sunPlace.halo * 1.1 + 0.04 }" />
-      <div class="sun-a" :style="{ opacity: sunPlace.halo * 0.9 + 0.04 }" />
-      <div class="sun-core" :style="{ opacity: sunPlace.core }">
-        <div class="sun-surface" />
+      <!-- 外日冕（淡雾） -->
+      <div class="sun-corona" :style="{ opacity: sunPlace.halo * 1.3 + 0.02 }" />
+      <!-- 中耀斑层 -->
+      <div class="sun-flares" :style="{ opacity: sunPlace.halo * 1.0 + 0.02 }">
+        <span class="flare f1" />
+        <span class="flare f2" />
+        <span class="flare f3" />
+        <span class="flare f4" />
+        <span class="flare f5" />
+        <span class="flare f6" />
       </div>
+      <!-- 内日冕 -->
+      <div class="sun-inner-corona" :style="{ opacity: sunPlace.halo * 0.9 + 0.03 }" />
+      <!-- 核心 -->
+      <svg class="sun-core-svg" viewBox="-100 -100 200 200" :style="{ opacity: sunPlace.core }">
+        <defs>
+          <!-- 太阳核心的多层渐变 -->
+          <radialGradient id="sunCore" cx="38%" cy="34%" r="70%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="12%" stop-color="#fff6e0" />
+            <stop offset="35%" stop-color="#ffd988" />
+            <stop offset="60%" stop-color="#ffae3c" />
+            <stop offset="85%" stop-color="#ff7a1a" />
+            <stop offset="100%" stop-color="rgba(255, 100, 30, 0)" />
+          </radialGradient>
+
+          <!-- 等离子体表面纹理：不规则、会流动 -->
+          <filter id="sunPlasma">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015 0.022" numOctaves="4" seed="3">
+              <animate attributeName="baseFrequency" dur="28s" values="0.013 0.02;0.017 0.025;0.013 0.02" repeatCount="indefinite" />
+              <animate attributeName="seed" dur="41s" values="3;7;3" repeatCount="indefinite" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" scale="18" />
+          </filter>
+
+          <!-- 亮斑：表面的热点 -->
+          <filter id="sunSpots">
+            <feTurbulence type="fractalNoise" baseFrequency="0.06 0.08" numOctaves="3" seed="9">
+              <animate attributeName="baseFrequency" dur="18s" values="0.05 0.07;0.07 0.09;0.05 0.07" repeatCount="indefinite" />
+            </feTurbulence>
+            <feColorMatrix values="0 0 0 0 1  0 0 0 0 0.92  0 0 0 0 0.7  0 0 0 0.35 0" />
+            <feComposite in2="SourceGraphic" operator="in" />
+          </filter>
+
+          <!-- 整体发光 -->
+          <filter id="sunGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="6" />
+          </filter>
+        </defs>
+
+        <!-- 底层：被扭曲的等离子体 -->
+        <circle cx="0" cy="0" r="92" fill="url(#sunCore)" filter="url(#sunPlasma)" />
+        <!-- 亮斑叠加 -->
+        <circle cx="0" cy="0" r="88" fill="url(#sunCore)" filter="url(#sunSpots)" opacity="0.6" />
+        <!-- 最亮的核心白点 -->
+        <circle cx="-6" cy="-8" r="22" fill="#fffdf2" opacity="0.85" filter="url(#sunGlow)" />
+      </svg>
     </div>
 
-    <!-- 月亮：真实月相与真实位置 -->
+    <!-- 月亮：写实环形山 + 月海 + 光照终止线 -->
     <div
       class="moon-wrap"
       :style="{
@@ -497,6 +548,7 @@ onUnmounted(() => {
         transform: `translate3d(${-pointer.x * 8}px, ${-pointer.y * 6}px, 0)`,
       }"
     >
+      <!-- 大气辉光 -->
       <div
         class="moon-halo"
         :style="{
@@ -504,61 +556,122 @@ onUnmounted(() => {
           transform: `scale(${0.86 + (moon ? moon.illumination : 0.5) * 0.34})`,
         }"
       />
+      <!-- 月球本体 -->
       <svg class="moon-svg" viewBox="0 0 100 100">
         <defs>
-          <radialGradient id="moonFace" cx="32%" cy="28%" r="84%">
-            <stop offset="0%" stop-color="#fffaf0" />
-            <stop offset="14%" stop-color="#fbf0d6" />
-            <stop offset="40%" stop-color="#efdcb2" />
-            <stop offset="70%" stop-color="#d8bf8a" />
-            <stop offset="100%" stop-color="#b89e6a" />
+          <!-- 月壤底色（偏灰棕） -->
+          <radialGradient id="moonBody" cx="32%" cy="28%" r="90%">
+            <stop offset="0%" stop-color="#d8c8a8" />
+            <stop offset="20%" stop-color="#c9b892" />
+            <stop offset="45%" stop-color="#a89572" />
+            <stop offset="70%" stop-color="#7f6e52" />
+            <stop offset="100%" stop-color="#4a4030" />
           </radialGradient>
-          <radialGradient id="moonMar" cx="40%" cy="42%" r="60%">
-            <stop offset="0%" stop-color="#8a7452" stop-opacity="0.55" />
-            <stop offset="60%" stop-color="#8a7452" stop-opacity="0.22" />
-            <stop offset="100%" stop-color="#8a7452" stop-opacity="0" />
+          <!-- 月海颜色（更深、更平） -->
+          <radialGradient id="mareFill" cx="40%" cy="42%" r="60%">
+            <stop offset="0%" stop-color="#4a4238" stop-opacity="0.85" />
+            <stop offset="50%" stop-color="#3a342c" stop-opacity="0.7" />
+            <stop offset="100%" stop-color="#2a2620" stop-opacity="0" />
           </radialGradient>
+          <!-- 高地颜色 -->
+          <radialGradient id="highlandFill" cx="35%" cy="30%" r="80%">
+            <stop offset="0%" stop-color="#ddd0b0" stop-opacity="0.25" />
+            <stop offset="100%" stop-color="#ddd0b0" stop-opacity="0" />
+          </radialGradient>
+          <!-- 表面粗糙度噪声 -->
+          <filter id="moonTexture" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="5" />
+            <feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.35  0 0 0 0.15 0" />
+          </filter>
+          <!-- 环形山阴影（背着光的一侧） -->
+          <filter id="craterShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="1.2" result="blur" />
+            <feOffset dx="-1.5" dy="-1.5" result="offset" />
+            <feComposite in="blur" in2="offset" operator="in" />
+            <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0" />
+          </filter>
           <clipPath id="moonLit">
             <path :d="moonPath" />
           </clipPath>
-          <clipPath id="moonFull">
-            <circle cx="50" cy="50" r="46" />
-          </clipPath>
-          <filter id="moonRough">
-            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" />
-            <feColorMatrix values="0 0 0 0 0.52  0 0 0 0 0.44  0 0 0 0 0.32  0 0 0 0.28 0" />
-            <feComposite in2="SourceGraphic" operator="in" />
-          </filter>
         </defs>
 
-        <!-- 地球反照：暗面的轮廓 -->
-        <circle cx="50" cy="50" r="46" class="moon-earthshine" />
+        <!-- 暗面轮廓（地球反照） -->
+        <circle cx="50" cy="50" r="46" fill="#0a1018" opacity="0.55" />
 
-        <!-- 未裁剪的整张月面阴影（让月影看起来立体） -->
-        <path :d="moonPath" fill="url(#moonFace)" class="moon-face" />
+        <!-- 亮面底色（先整体铺，再被 clip 限制） -->
+        <circle cx="50" cy="50" r="46" fill="url(#moonBody)" clip-path="url(#moonLit)" />
 
-        <!-- 月海（大斑块，只在亮面出现） -->
-        <g clip-path="url(#moonLit)">
-          <ellipse cx="38" cy="40" rx="14" ry="10" fill="url(#moonMar)" />
-          <ellipse cx="60" cy="60" rx="10" ry="7" fill="url(#moonMar)" />
-          <ellipse cx="68" cy="38" rx="8" ry="6" fill="url(#moonMar)" />
-          <ellipse cx="45" cy="70" rx="9" ry="6" fill="url(#moonMar)" />
+        <!-- 粗糙纹理叠加 -->
+        <circle cx="50" cy="50" r="46" filter="url(#moonTexture)" clip-path="url(#moonLit)" opacity="0.6" />
+
+        <!-- 月海（深色平坦斑块，不规则形状） -->
+        <g clip-path="url(#moonLit)" class="mare-group">
+          <!-- 风暴洋（左上大斑块） -->
+          <path d="M 22 32 Q 20 28 26 26 Q 38 22 46 26 Q 52 30 50 38 Q 46 44 36 44 Q 26 42 22 32 Z" fill="url(#mareFill)" />
+          <!-- 雨海（中偏左上） -->
+          <ellipse cx="38" cy="42" rx="8" ry="6" fill="url(#mareFill)" opacity="0.8" />
+          <!-- 静海（右侧，大椭圆） -->
+          <path d="M 58 52 Q 56 44 64 42 Q 76 42 78 52 Q 76 62 66 62 Q 58 60 58 52 Z" fill="url(#mareFill)" />
+          <!-- 云海（右下） -->
+          <ellipse cx="50" cy="68" rx="10" ry="5" fill="url(#mareFill)" opacity="0.7" />
+          <!-- 危海（右上小斑） -->
+          <ellipse cx="70" cy="32" rx="5" ry="4" fill="url(#mareFill)" opacity="0.85" />
+          <!-- 丰富海（右下小斑） -->
+          <ellipse cx="44" cy="74" rx="6" ry="3" fill="url(#mareFill)" opacity="0.6" />
         </g>
 
-        <!-- 陨石坑（小圆环，有阴影） -->
+        <!-- 高地（浅色斑块，起伏感） -->
+        <g clip-path="url(#moonLit)" opacity="0.5">
+          <ellipse cx="32" cy="28" rx="10" ry="6" fill="url(#highlandFill)" />
+          <ellipse cx="68" cy="68" rx="8" ry="5" fill="url(#highlandFill)" />
+        </g>
+
+        <!-- 环形山（真正的结构：外壁环 + 内壁阴影 + 中央峰可选） -->
         <g clip-path="url(#moonLit)" class="crater-group">
-          <circle cx="34" cy="36" r="5" />
-          <circle cx="34" cy="36" r="2.6" />
-          <circle cx="57" cy="59" r="4" />
-          <circle cx="57" cy="59" r="2" />
-          <circle cx="41" cy="67" r="3" />
-          <circle cx="41" cy="67" r="1.4" />
-          <circle cx="65" cy="31" r="2.4" />
-          <circle cx="65" cy="31" r="1.2" />
-          <circle cx="48" cy="48" r="1.8" />
-          <circle cx="60" cy="42" r="1.6" />
-          <circle cx="30" cy="58" r="1.4" />
+          <!-- 大型撞击坑（带内外壁） -->
+          <g>
+            <!-- 第谷（大而显著的） -->
+            <ellipse cx="55" cy="72" rx="5" ry="4.5" fill="none" stroke="#3a3022" stroke-width="0.9" opacity="0.7" />
+            <ellipse cx="54" cy="71.5" rx="3.2" ry="2.8" fill="none" stroke="#2a2218" stroke-width="0.6" opacity="0.6" />
+            <circle cx="54" cy="71" r="0.9" fill="#2a2218" opacity="0.5" />
+
+            <!-- 哥白尼 -->
+            <ellipse cx="30" cy="62" rx="4" ry="3.6" fill="none" stroke="#3a3022" stroke-width="0.7" opacity="0.65" />
+            <ellipse cx="29.5" cy="61.5" rx="2.4" ry="2" fill="none" stroke="#2a2218" stroke-width="0.5" opacity="0.55" />
+
+            <!-- 阿里斯塔克斯 -->
+            <ellipse cx="26" cy="38" rx="3.5" ry="3.2" fill="none" stroke="#3a3022" stroke-width="0.7" opacity="0.6" />
+            <ellipse cx="25.5" cy="37.5" rx="2" ry="1.7" fill="none" stroke="#2a2218" stroke-width="0.5" opacity="0.5" />
+
+            <!-- 柏拉图（平坦底） -->
+            <ellipse cx="40" cy="30" rx="3.2" ry="2.8" fill="#2a2218" opacity="0.35" />
+            <ellipse cx="40" cy="30" rx="3.2" ry="2.8" fill="none" stroke="#3a3022" stroke-width="0.6" opacity="0.6" />
+          </g>
+
+          <!-- 中型撞击坑 -->
+          <g opacity="0.7">
+            <ellipse cx="62" cy="28" rx="2.2" ry="1.9" fill="none" stroke="#3a3022" stroke-width="0.5" />
+            <ellipse cx="48" cy="52" rx="2" ry="1.7" fill="none" stroke="#3a3022" stroke-width="0.5" />
+            <ellipse cx="72" cy="54" rx="2.4" ry="2" fill="none" stroke="#3a3022" stroke-width="0.5" />
+            <ellipse cx="38" cy="72" rx="1.8" ry="1.5" fill="none" stroke="#3a3022" stroke-width="0.4" />
+            <ellipse cx="66" cy="62" rx="1.8" ry="1.5" fill="none" stroke="#3a3022" stroke-width="0.4" />
+          </g>
+
+          <!-- 小型撞击坑（只画外轮廓） -->
+          <g opacity="0.5">
+            <circle cx="56" cy="42" r="1.2" fill="none" stroke="#2a2218" stroke-width="0.35" />
+            <circle cx="42" cy="58" r="1" fill="none" stroke="#2a2218" stroke-width="0.3" />
+            <circle cx="72" cy="36" r="1.1" fill="none" stroke="#2a2218" stroke-width="0.35" />
+            <circle cx="52" cy="66" r="0.9" fill="none" stroke="#2a2218" stroke-width="0.3" />
+            <circle cx="34" cy="50" r="1" fill="none" stroke="#2a2218" stroke-width="0.3" />
+            <circle cx="60" cy="74" r="0.8" fill="none" stroke="#2a2218" stroke-width="0.25" />
+            <circle cx="76" cy="44" r="0.9" fill="none" stroke="#2a2218" stroke-width="0.3" />
+            <circle cx="28" cy="54" r="0.8" fill="none" stroke="#2a2218" stroke-width="0.25" />
+          </g>
         </g>
+
+        <!-- 终止线附近的阴影渐变（让明暗过渡更自然立体） -->
+        <path :d="moonPath" fill="url(#moonTerminator)" opacity="0" />
       </svg>
     </div>
 
@@ -768,106 +881,93 @@ onUnmounted(() => {
 /* 太阳 */
 .sun-wrap {
   position: absolute;
-  width: 64px;
-  height: 64px;
-  margin: -32px 0 0 -32px;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
   transition:
     left 4s var(--ease-glide),
     top 4s var(--ease-glide);
 }
 
-.sun-core {
+.sun-core-svg {
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 38% 34%, #fffdf3 0%, rgba(255, 240, 190, 0) 38%),
-    radial-gradient(circle, #ffe39a 0%, #ffc55b 48%, #ff9a2e 82%, rgba(255, 130, 30, 0) 100%);
-  box-shadow:
-    0 0 40px 14px rgba(255, 200, 110, 0.5),
-    0 0 90px 34px rgba(255, 160, 60, 0.26),
-    0 0 160px 70px rgba(255, 140, 40, 0.12);
+  inset: -50px;
+  width: 220px;
+  height: 220px;
+  filter: drop-shadow(0 0 30px rgba(255, 200, 110, 0.5))
+    drop-shadow(0 0 80px rgba(255, 160, 60, 0.25));
   transition: opacity 2.2s var(--ease-glide);
-  overflow: hidden;
+  overflow: visible;
 }
 
-.sun-surface {
+/* 内日冕：紧贴核心的亮色光晕 */
+.sun-inner-corona {
   position: absolute;
-  inset: -6px;
+  inset: -40px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 65% 55%, rgba(255, 230, 160, 0.38) 0%, transparent 40%),
-    radial-gradient(circle at 30% 70%, rgba(255, 170, 80, 0.34) 0%, transparent 36%),
-    radial-gradient(circle at 55% 25%, rgba(255, 210, 120, 0.3) 0%, transparent 30%);
-  animation: sunSurface 14s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes sunSurface {
-  0%,
-  100% {
-    transform: rotate(0deg) scale(1);
-    opacity: 0.9;
-  }
-  50% {
-    transform: rotate(15deg) scale(1.04);
-    opacity: 1;
-  }
-}
-
-/* 三层外晕：越外越大越虚 */
-.sun-a,
-.sun-b,
-.sun-c {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  transition: opacity 2.2s var(--ease-glide);
-}
-
-.sun-a {
-  left: -120px;
-  top: -120px;
-  width: 304px;
-  height: 304px;
   background: radial-gradient(
     circle,
-    rgba(255, 230, 170, 0.42) 0%,
-    rgba(255, 200, 130, 0.18) 32%,
-    rgba(255, 170, 90, 0.06) 58%,
+    rgba(255, 230, 160, 0.6) 0%,
+    rgba(255, 200, 120, 0.22) 30%,
+    rgba(255, 170, 90, 0.08) 55%,
     transparent 76%
   );
-  filter: blur(4px);
-}
-
-.sun-b {
-  left: -240px;
-  top: -240px;
-  width: 544px;
-  height: 544px;
-  background: radial-gradient(
-    circle,
-    rgba(255, 210, 140, 0.22) 0%,
-    rgba(255, 180, 100, 0.1) 32%,
-    rgba(255, 160, 80, 0.03) 58%,
-    transparent 78%
-  );
   filter: blur(10px);
+  transition: opacity 2.2s var(--ease-glide);
 }
 
-.sun-c {
-  left: -420px;
-  top: -420px;
-  width: 904px;
-  height: 904px;
+/* 耀斑层：从核心向外伸出的锥形光 */
+.sun-flares {
+  position: absolute;
+  inset: -60px;
+  transition: opacity 2.2s var(--ease-glide);
+}
+
+.flare {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 120px;
+  margin: -60px 0 0 -20px;
   background: radial-gradient(
-    circle,
-    rgba(255, 180, 110, 0.12) 0%,
-    rgba(255, 160, 90, 0.05) 30%,
-    rgba(255, 140, 70, 0.015) 60%,
+    ellipse at 50% 100%,
+    rgba(255, 230, 160, 0.5) 0%,
+    rgba(255, 200, 120, 0.18) 30%,
+    rgba(255, 170, 90, 0.04) 60%,
     transparent 80%
   );
-  filter: blur(22px);
+  transform-origin: 50% 100%;
+  animation: flarePulse 11s ease-in-out infinite;
+}
+
+.flare.f1 { --rot: 0deg; animation-delay: 0s; }
+.flare.f2 { --rot: 60deg; animation-delay: 1.5s; }
+.flare.f3 { --rot: 120deg; animation-delay: 3s; }
+.flare.f4 { --rot: 180deg; animation-delay: 4.5s; }
+.flare.f5 { --rot: 240deg; animation-delay: 6s; }
+.flare.f6 { --rot: 300deg; animation-delay: 7.5s; }
+
+@keyframes flarePulse {
+  0%, 100% { opacity: 0.45; transform: rotate(var(--rot)) scale(1); }
+  50% { opacity: 0.85; transform: rotate(var(--rot)) scale(1.08); }
+}
+
+/* 外日冕：很大很淡的弥散雾 */
+.sun-corona {
+  position: absolute;
+  inset: -180px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 200, 130, 0.14) 0%,
+    rgba(255, 170, 90, 0.06) 20%,
+    rgba(255, 150, 70, 0.02) 45%,
+    transparent 70%
+  );
+  filter: blur(26px);
+  transition: opacity 2.2s var(--ease-glide);
+  pointer-events: none;
 }
 
 /* 月亮 */
@@ -875,9 +975,9 @@ onUnmounted(() => {
   position: absolute;
   left: 82%;
   top: 12%;
-  width: 128px;
-  height: 128px;
-  margin-left: -64px;
+  width: 140px;
+  height: 140px;
+  margin-left: -70px;
   transition:
     left 3s var(--ease-glide),
     top 3s var(--ease-glide),
@@ -888,18 +988,18 @@ onUnmounted(() => {
 
 .moon-halo {
   position: absolute;
-  inset: -48px;
+  inset: -60px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(220, 232, 255, 0.26) 0%,
-    rgba(200, 216, 248, 0.1) 40%,
-    rgba(170, 196, 236, 0.03) 66%,
+    rgba(220, 232, 255, 0.3) 0%,
+    rgba(200, 216, 248, 0.12) 38%,
+    rgba(170, 196, 236, 0.04) 66%,
     transparent 82%
   );
   animation: moonBreath 9s ease-in-out infinite;
   transition: opacity 1.6s var(--ease-glide);
-  filter: blur(2px);
+  filter: blur(3px);
 }
 
 .moon-svg {
@@ -908,30 +1008,14 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   display: block;
-  filter: drop-shadow(0 0 16px rgba(220, 232, 255, 0.3))
-    drop-shadow(0 0 38px rgba(180, 200, 240, 0.18));
-}
-
-.moon-earthshine {
-  fill: rgba(200, 216, 240, 0.04);
-  stroke: rgba(200, 216, 240, 0.1);
-  stroke-width: 1;
-}
-
-.moon-face {
-  animation: moonBreath 9s ease-in-out infinite;
-}
-
-.crater-group circle {
-  fill: rgba(120, 100, 72, 0.42);
-  stroke: rgba(96, 80, 56, 0.3);
-  stroke-width: 0.6;
+  filter: drop-shadow(0 0 14px rgba(220, 232, 255, 0.28))
+    drop-shadow(0 0 40px rgba(180, 200, 240, 0.14));
 }
 
 @keyframes moonBreath {
   0%,
   100% {
-    opacity: 0.92;
+    opacity: 0.9;
   }
   50% {
     opacity: 1;
@@ -1201,33 +1285,29 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .sun-wrap {
-    width: 44px;
-    height: 44px;
-    margin: -22px 0 0 -22px;
+    width: 80px;
+    height: 80px;
+    margin: -40px 0 0 -40px;
   }
 
-  .sun-a {
-    left: -90px;
-    top: -90px;
-    width: 224px;
-    height: 224px;
+  .sun-core-svg {
+    inset: -34px;
+    width: 150px;
+    height: 150px;
   }
 
-  .sun-b {
-    left: -170px;
-    top: -170px;
-    width: 384px;
-    height: 384px;
+  .sun-corona {
+    inset: -120px;
   }
 
   .moon-wrap {
-    width: 84px;
-    height: 84px;
-    margin-left: -42px;
+    width: 96px;
+    height: 96px;
+    margin-left: -48px;
   }
 
   .moon-halo {
-    inset: -30px;
+    inset: -40px;
   }
 
   .glow-a {
