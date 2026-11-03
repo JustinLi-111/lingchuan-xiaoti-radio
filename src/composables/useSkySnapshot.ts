@@ -1,79 +1,86 @@
 import { ref } from 'vue'
-import { findRiseSet, moonAltitudeAt } from '@/lib/skyMath'
+import { moonAltitudeAt } from '@/lib/skyMath'
 
 /**
  * "那一夜的星空快照" —— 星图上点中某条故事时，把它的发布时间戳传进来。
- * StarryBackground 监听这个 ref，重算"那条故事发布那天、且月亮真的在天上"的真实天空。
+ * StarryBackground 监听这个 ref，重算"那条故事发布当晚月亮升起后 15 分钟"的真实天空。
  *
- * 策略：
- *   1. 优先 23:00 —— 如果那一刻月亮高度角 > 0°（在天上），就用它
- *   2. 否则用 findRiseSet('moon', day) 找到那天的月升/月落时刻，选一个保证月亮在天上的
- *      - 23:00 还没升起 → 月升后 15 分钟
- *      - 23:00 已经落了 → 月落前 15 分钟
- *      - 极昼极夜（西安不会）→ 兜底 23:00
- *   3. 月相只跟"哪一天"有关，跟时刻无关，所以月相永远是发布那天的月相
+ * 策略（极简且正确）：
+ *   故事发布那天的"夜晚窗口" = 那天 18:00 → 次日 06:00（共 12 小时）
+ *   在这个窗口内找第一个"月亮高度角从 <0° 越过 0°"的时刻 → 那就是月亮升起
+ *   +15 分钟 = 快照时刻
  *
- * 模块级单例，全局共享。
+ *   为什么跨天？比如故事是 11/03 晚上发布的，但月亮在 11/04 凌晨 01:22 才升起来
+ *   那快照时刻就是 11/04 01:37 —— 这是对的，因为 11/03 那晚的月亮就是在 11/04 凌晨才升起来的
+ *   月相按"哪一天"算，跨一天月相差不到 1°（肉眼完全看不出），语义上没问题
+ *
+ *   极夜兜底（西安不会，但保险）：窗口内没找到月升 → 用原始发布时刻或 23:00
  */
 export interface SnapshotMeta {
   id: number
   title: string
   subtitle: string
-  /** 如果自动偏移了时间，这里存偏移说明给 banner 显示 */
   timeNote?: string
 }
 
 const targetDate = ref<Date | null>(null)
 const targetMeta = ref<SnapshotMeta | null>(null)
 
-/** 把时分格式化成 "HH:MM" */
 const padHM = (d: Date) =>
   `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
-/** 找到"发布那天月亮肯定在天上"的时刻 */
+/**
+ * 扫描 [start, end] 区间（步长 5 分钟），找月亮从地平线下升起来的第一个时刻
+ * 返回该时刻 +15 分钟，找不到返回 null
+ */
+const findMoonRiseInWindow = (start: Date, end: Date): Date | null => {
+  const prevAlt = moonAltitudeAt(start)
+  let prev = prevAlt
+  let cur = start
+  const stepMs = 5 * 60_000
+
+  while (cur.getTime() < end.getTime()) {
+    const next = new Date(cur.getTime() + stepMs)
+    const alt = moonAltitudeAt(next)
+    // 月亮从上往下穿 → 往上穿 0°（上升）
+    if (prev < 0 && alt >= 0) {
+      // 线性插值精确时刻（更准一点，但 5 分钟精度也够）
+      const frac = prev / (prev - alt)
+      const riseAt = new Date(cur.getTime() + frac * stepMs)
+      return new Date(riseAt.getTime() + 15 * 60_000)
+    }
+    prev = alt
+    cur = next
+  }
+  return null
+}
+
 const resolveSkyTime = (raw: Date): { date: Date; note: string } => {
-  // 1. 优先 23:00
-  const night23 = new Date(raw)
-  night23.setHours(23, 0, 0, 0)
-  if (moonAltitudeAt(night23) > 0) {
-    return { date: night23, note: '' }
+  // 夜晚窗口 = 故事那天 18:00 → 次日 06:00
+  const nightStart = new Date(raw)
+  nightStart.setHours(18, 0, 0, 0)
+  const nightEnd = new Date(nightStart.getTime() + 12 * 60 * 60_000) // +12h → 次日 06:00
+
+  const risePlus15 = findMoonRiseInWindow(nightStart, nightEnd)
+  if (risePlus15) {
+    const storyDay = `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}-${String(raw.getDate()).padStart(2, '0')}`
+    const snapDay = `${risePlus15.getFullYear()}-${String(risePlus15.getMonth() + 1).padStart(2, '0')}-${String(risePlus15.getDate()).padStart(2, '0')}`
+    const crossed = storyDay !== snapDay
+    const note = crossed
+      ? `（月在次日 ${padHM(risePlus15)} 升起）`
+      : `（月升后 ${padHM(risePlus15)}）`
+    return { date: risePlus15, note }
   }
 
-  // 2. 找月升月落
-  const { rise, set } = findRiseSet('moon', raw)
-
-  // 2a. 有月升时刻且 23:00 在月升之前（月亮还没升起）→ 用月升后 15 分钟
-  if (rise && raw.getHours() < 23) {
-    if (rise.getTime() < night23.getTime()) {
-      const d = new Date(rise.getTime() + 15 * 60_000)
-      if (moonAltitudeAt(d) > 0) {
-        return { date: d, note: `（展示月升后 ${padHM(d)}）` }
-      }
-    }
-  }
-
-  // 2b. 23:00 时月亮已经落了 → 用月落前 15 分钟
-  if (set) {
-    if (set.getTime() <= night23.getTime()) {
-      const d = new Date(set.getTime() - 15 * 60_000)
-      if (moonAltitudeAt(d) > 0) {
-        return { date: d, note: `（展示月落前 ${padHM(d)}）` }
-      }
-    } else if (moonAltitudeAt(set) <= 0) {
-      // set 是 null 或异常：月落其实在 23:00 之后（意味着月亮此时在天上）→ 用 23:00
-      return { date: night23, note: '' }
-    }
-  }
-
-  // 3. 兜底（极夜/极昼/异常）→ 原始发布时刻（如果是晚上）或 23:00
-  const fallback = raw.getHours() >= 18 && raw.getHours() <= 4 ? raw : night23
+  // 兜底：窗口内没找到月升（极夜）→ 用 23:00
+  const fallback = new Date(raw)
+  fallback.setHours(23, 0, 0, 0)
   return { date: fallback, note: '' }
 }
 
 export const useSkySnapshot = () => ({
   targetDate,
   targetMeta,
-  /** 锁天幕到"发布那天月亮在天上的时刻" */
   lock(createdAt: string, meta: Omit<SnapshotMeta, 'timeNote'>) {
     const raw = new Date(createdAt)
     const { date, note } = resolveSkyTime(raw)
