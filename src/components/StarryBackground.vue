@@ -477,19 +477,10 @@ onUnmounted(() => {
     <!-- 白昼滤光：压暗天幕与光晕；太阳、月亮、云画在它上面，才不会被一起压灰 -->
     <div class="day-veil" :style="{ opacity: palette.veil }" />
 
-    <!-- 太阳：写实 SVG 等离子体 + 日冕 + 耀斑 -->
+    <!-- 太阳：写实 SVG 等离子体 + 日冕 -->
     <div class="sun-wrap" :style="{ left: sunPlace.x + '%', top: sunPlace.y + '%' }">
       <!-- 外日冕（淡雾） -->
       <div class="sun-corona" :style="{ opacity: sunPlace.halo * 1.3 + 0.02 }" />
-      <!-- 中耀斑层 -->
-      <div class="sun-flares" :style="{ opacity: sunPlace.halo * 1.0 + 0.02 }">
-        <span class="flare f1" />
-        <span class="flare f2" />
-        <span class="flare f3" />
-        <span class="flare f4" />
-        <span class="flare f5" />
-        <span class="flare f6" />
-      </div>
       <!-- 内日冕 -->
       <div class="sun-inner-corona" :style="{ opacity: sunPlace.halo * 0.9 + 0.03 }" />
       <!-- 核心 -->
@@ -504,37 +495,23 @@ onUnmounted(() => {
             <stop offset="85%" stop-color="#ff7a1a" />
             <stop offset="100%" stop-color="rgba(255, 100, 30, 0)" />
           </radialGradient>
-
-          <!-- 等离子体表面纹理：不规则、会流动 -->
+          <!-- 等离子体表面纹理：不规则、非常缓慢地流动 -->
           <filter id="sunPlasma">
             <feTurbulence type="fractalNoise" baseFrequency="0.015 0.022" numOctaves="4" seed="3">
-              <animate attributeName="baseFrequency" dur="28s" values="0.013 0.02;0.017 0.025;0.013 0.02" repeatCount="indefinite" />
-              <animate attributeName="seed" dur="41s" values="3;7;3" repeatCount="indefinite" />
+              <animate attributeName="baseFrequency" dur="60s" values="0.013 0.02;0.017 0.025;0.013 0.02" repeatCount="indefinite" />
             </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" scale="18" />
+            <feDisplacementMap in="SourceGraphic" scale="16" />
           </filter>
-
-          <!-- 亮斑：表面的热点 -->
-          <filter id="sunSpots">
-            <feTurbulence type="fractalNoise" baseFrequency="0.06 0.08" numOctaves="3" seed="9">
-              <animate attributeName="baseFrequency" dur="18s" values="0.05 0.07;0.07 0.09;0.05 0.07" repeatCount="indefinite" />
-            </feTurbulence>
-            <feColorMatrix values="0 0 0 0 1  0 0 0 0 0.92  0 0 0 0 0.7  0 0 0 0.35 0" />
-            <feComposite in2="SourceGraphic" operator="in" />
-          </filter>
-
           <!-- 整体发光 -->
           <filter id="sunGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="6" />
+            <feGaussianBlur stdDeviation="5" />
           </filter>
         </defs>
 
         <!-- 底层：被扭曲的等离子体 -->
         <circle cx="0" cy="0" r="92" fill="url(#sunCore)" filter="url(#sunPlasma)" />
-        <!-- 亮斑叠加 -->
-        <circle cx="0" cy="0" r="88" fill="url(#sunCore)" filter="url(#sunSpots)" opacity="0.6" />
         <!-- 最亮的核心白点 -->
-        <circle cx="-6" cy="-8" r="22" fill="#fffdf2" opacity="0.85" filter="url(#sunGlow)" />
+        <circle cx="-6" cy="-8" r="20" fill="#fffdf2" opacity="0.85" filter="url(#sunGlow)" />
       </svg>
     </div>
 
@@ -881,9 +858,9 @@ onUnmounted(() => {
 /* 太阳 */
 .sun-wrap {
   position: absolute;
-  width: 120px;
-  height: 120px;
-  margin: -60px 0 0 -60px;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
   transition:
     left 4s var(--ease-glide),
     top 4s var(--ease-glide);
@@ -891,11 +868,11 @@ onUnmounted(() => {
 
 .sun-core-svg {
   position: absolute;
-  inset: -50px;
-  width: 220px;
-  height: 220px;
-  filter: drop-shadow(0 0 30px rgba(255, 200, 110, 0.5))
-    drop-shadow(0 0 80px rgba(255, 160, 60, 0.25));
+  inset: -42px;
+  width: 180px;
+  height: 180px;
+  filter: drop-shadow(0 0 24px rgba(255, 200, 110, 0.4))
+    drop-shadow(0 0 60px rgba(255, 160, 60, 0.2));
   transition: opacity 2.2s var(--ease-glide);
   overflow: visible;
 }
@@ -903,69 +880,32 @@ onUnmounted(() => {
 /* 内日冕：紧贴核心的亮色光晕 */
 .sun-inner-corona {
   position: absolute;
-  inset: -40px;
+  inset: -32px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 230, 160, 0.6) 0%,
-    rgba(255, 200, 120, 0.22) 30%,
-    rgba(255, 170, 90, 0.08) 55%,
+    rgba(255, 230, 160, 0.55) 0%,
+    rgba(255, 200, 120, 0.2) 30%,
+    rgba(255, 170, 90, 0.07) 55%,
     transparent 76%
   );
-  filter: blur(10px);
+  filter: blur(8px);
   transition: opacity 2.2s var(--ease-glide);
-}
-
-/* 耀斑层：从核心向外伸出的锥形光 */
-.sun-flares {
-  position: absolute;
-  inset: -60px;
-  transition: opacity 2.2s var(--ease-glide);
-}
-
-.flare {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 40px;
-  height: 120px;
-  margin: -60px 0 0 -20px;
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    rgba(255, 230, 160, 0.5) 0%,
-    rgba(255, 200, 120, 0.18) 30%,
-    rgba(255, 170, 90, 0.04) 60%,
-    transparent 80%
-  );
-  transform-origin: 50% 100%;
-  animation: flarePulse 11s ease-in-out infinite;
-}
-
-.flare.f1 { --rot: 0deg; animation-delay: 0s; }
-.flare.f2 { --rot: 60deg; animation-delay: 1.5s; }
-.flare.f3 { --rot: 120deg; animation-delay: 3s; }
-.flare.f4 { --rot: 180deg; animation-delay: 4.5s; }
-.flare.f5 { --rot: 240deg; animation-delay: 6s; }
-.flare.f6 { --rot: 300deg; animation-delay: 7.5s; }
-
-@keyframes flarePulse {
-  0%, 100% { opacity: 0.45; transform: rotate(var(--rot)) scale(1); }
-  50% { opacity: 0.85; transform: rotate(var(--rot)) scale(1.08); }
 }
 
 /* 外日冕：很大很淡的弥散雾 */
 .sun-corona {
   position: absolute;
-  inset: -180px;
+  inset: -140px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 200, 130, 0.14) 0%,
-    rgba(255, 170, 90, 0.06) 20%,
-    rgba(255, 150, 70, 0.02) 45%,
+    rgba(255, 200, 130, 0.12) 0%,
+    rgba(255, 170, 90, 0.05) 20%,
+    rgba(255, 150, 70, 0.015) 45%,
     transparent 70%
   );
-  filter: blur(26px);
+  filter: blur(22px);
   transition: opacity 2.2s var(--ease-glide);
   pointer-events: none;
 }
@@ -975,9 +915,9 @@ onUnmounted(() => {
   position: absolute;
   left: 82%;
   top: 12%;
-  width: 140px;
-  height: 140px;
-  margin-left: -70px;
+  width: 64px;
+  height: 64px;
+  margin-left: -32px;
   transition:
     left 3s var(--ease-glide),
     top 3s var(--ease-glide),
@@ -988,18 +928,18 @@ onUnmounted(() => {
 
 .moon-halo {
   position: absolute;
-  inset: -60px;
+  inset: -30px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(220, 232, 255, 0.3) 0%,
-    rgba(200, 216, 248, 0.12) 38%,
-    rgba(170, 196, 236, 0.04) 66%,
+    rgba(220, 232, 255, 0.28) 0%,
+    rgba(200, 216, 248, 0.1) 38%,
+    rgba(170, 196, 236, 0.03) 66%,
     transparent 82%
   );
   animation: moonBreath 9s ease-in-out infinite;
   transition: opacity 1.6s var(--ease-glide);
-  filter: blur(3px);
+  filter: blur(2px);
 }
 
 .moon-svg {
@@ -1008,8 +948,8 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   display: block;
-  filter: drop-shadow(0 0 14px rgba(220, 232, 255, 0.28))
-    drop-shadow(0 0 40px rgba(180, 200, 240, 0.14));
+  filter: drop-shadow(0 0 10px rgba(220, 232, 255, 0.26))
+    drop-shadow(0 0 28px rgba(180, 200, 240, 0.12));
 }
 
 @keyframes moonBreath {
@@ -1285,29 +1225,29 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .sun-wrap {
-    width: 80px;
-    height: 80px;
-    margin: -40px 0 0 -40px;
+    width: 64px;
+    height: 64px;
+    margin: -32px 0 0 -32px;
   }
 
   .sun-core-svg {
-    inset: -34px;
-    width: 150px;
-    height: 150px;
+    inset: -28px;
+    width: 120px;
+    height: 120px;
   }
 
   .sun-corona {
-    inset: -120px;
+    inset: -100px;
   }
 
   .moon-wrap {
-    width: 96px;
-    height: 96px;
-    margin-left: -48px;
+    width: 48px;
+    height: 48px;
+    margin-left: -24px;
   }
 
   .moon-halo {
-    inset: -40px;
+    inset: -22px;
   }
 
   .glow-a {

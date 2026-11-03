@@ -161,7 +161,6 @@ const view = ref({ x: 0, y: 0, k: 1 })
 const svgRef = ref<SVGSVGElement | null>(null)
 const shellRef = ref<HTMLElement | null>(null)
 const pxPerUnit = ref(0.5)
-const suppressClick = ref(false)
 const dragging = ref(false)
 const hovered = ref<MapStar | null>(null)
 const selected = ref<Story | null>(null)
@@ -241,15 +240,14 @@ const onWheel = (e: WheelEvent) => {
 const dragState = { pointerId: -1, startX: 0, startY: 0, originX: 0, originY: 0, moved: 0, scale: 1 }
 
 const onPointerDown = (e: PointerEvent) => {
-  const ctm = svgRef.value?.getScreenCTM()
-  if (!ctm) return
   dragState.pointerId = e.pointerId
   dragState.startX = e.clientX
   dragState.startY = e.clientY
   dragState.originX = view.value.x
   dragState.originY = view.value.y
   dragState.moved = 0
-  dragState.scale = ctm.a || 1
+  const ctm = svgRef.value?.getScreenCTM()
+  dragState.scale = ctm ? Math.hypot(ctm.a, ctm.b) : 1
   dragging.value = true
   svgRef.value?.setPointerCapture(e.pointerId)
 }
@@ -267,16 +265,39 @@ const onPointerMove = (e: PointerEvent) => {
 
 const onPointerUp = (e: PointerEvent) => {
   if (e.pointerId !== dragState.pointerId) return
+  const moved = dragState.moved
   dragging.value = false
-  if (dragState.moved > 4) {
-    suppressClick.value = true
-    window.setTimeout(() => { suppressClick.value = false }, 0)
-  }
   dragState.pointerId = -1
+
+  // 如果没怎么动，当作点击：命中离当前光标最近的星
+  if (moved <= 4) {
+    const svg = svgRef.value
+    const ctm = svg?.getScreenCTM()
+    if (!svg || !ctm) return
+    const point = svg.createSVGPoint()
+    point.x = e.clientX
+    point.y = e.clientY
+    const local = point.matrixTransform(ctm.inverse())
+    // 在屏幕上用固定像素半径命中，不随缩放变
+    const hitPx = 18
+    let nearest: MapStar | null = null
+    let nearestD = Infinity
+    for (const star of mapData.value.stars) {
+      const dx = star.x - local.x
+      const dy = star.y - local.y
+      const distLocal = Math.hypot(dx, dy)
+      const distScreen = distLocal * ctm.a // ctm.a ≈ view.k * pxPerUnit
+      if (distScreen < hitPx && distScreen < nearestD) {
+        nearestD = distScreen
+        nearest = star
+      }
+    }
+    if (nearest) selected.value = nearest.story
+    else selected.value = null
+  }
 }
 
 const selectStar = (star: MapStar) => {
-  if (suppressClick.value) return
   selected.value = star.story
 }
 
@@ -349,7 +370,6 @@ watch(
           :class="{ 'is-selected': selected?.id === star.story.id }"
           @pointerenter="hovered = star"
           @pointerleave="hovered = null"
-          @click.stop="selectStar(star)"
         >
           <circle :cx="star.x" :cy="star.y" :r="hitRadius" fill="transparent" />
           <circle
