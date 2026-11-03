@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useStarrySky } from '@/composables/useStarrySky'
 import { useRealSky } from '@/composables/useRealSky'
@@ -40,9 +40,12 @@ const snapshotBanner = computed(() => {
   if (!snapshotSky.value || !targetMeta.value) return null
   const d = targetDate.value!
   const pad = (n: number) => String(n).padStart(2, '0')
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const note = targetMeta.value.timeNote ?? ''
   return {
-    text: `这是 ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} 那晚的西安未央 · ${snapshotSky.value.moon.phaseName}`,
+    text: `这是 ${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm} 的西安未央 · ${snapshotSky.value.moon.phaseName}`,
     storyTitle: targetMeta.value.title,
+    note,
   }
 })
 
@@ -736,7 +739,7 @@ onUnmounted(() => {
     <transition name="snapshot-fade">
       <div v-if="snapshotBanner" class="snapshot-banner">
         <span class="sb-dot" />
-        <span class="sb-text">{{ snapshotBanner.text }}</span>
+        <span class="sb-text">{{ snapshotBanner.text }} <span v-if="snapshotBanner.note" class="sb-note">{{ snapshotBanner.note }}</span></span>
         <span class="sb-sub">点开「{{ snapshotBanner.storyTitle }}」那晚的天幕</span>
       </div>
     </transition>
@@ -1311,6 +1314,11 @@ onUnmounted(() => {
 .snapshot-banner .sb-sub {
   color: rgba(200, 220, 255, 0.45);
   font-size: 10px;
+}
+.snapshot-banner .sb-note {
+  color: rgba(200, 220, 255, 0.5);
+  font-size: 10px;
+  font-style: italic;
 }
 @keyframes sbPulse {
   0%, 100% { opacity: 0.5; transform: scale(0.9); }
