@@ -477,16 +477,12 @@ onUnmounted(() => {
     <!-- 白昼滤光：压暗天幕与光晕；太阳、月亮、云画在它上面，才不会被一起压灰 -->
     <div class="day-veil" :style="{ opacity: palette.veil }" />
 
-    <!-- 太阳：写实 SVG 等离子体 + 日冕 -->
+    <!-- 太阳：规则圆形 + 双层光晕 -->
     <div class="sun-wrap" :style="{ left: sunPlace.x + '%', top: sunPlace.y + '%' }">
-      <!-- 外日冕（淡雾） -->
       <div class="sun-corona" :style="{ opacity: sunPlace.halo * 1.3 + 0.02 }" />
-      <!-- 内日冕 -->
       <div class="sun-inner-corona" :style="{ opacity: sunPlace.halo * 0.9 + 0.03 }" />
-      <!-- 核心 -->
       <svg class="sun-core-svg" viewBox="-100 -100 200 200" :style="{ opacity: sunPlace.core }">
         <defs>
-          <!-- 太阳核心的多层渐变 -->
           <radialGradient id="sunCore" cx="38%" cy="34%" r="70%">
             <stop offset="0%" stop-color="#ffffff" />
             <stop offset="12%" stop-color="#fff6e0" />
@@ -495,23 +491,12 @@ onUnmounted(() => {
             <stop offset="85%" stop-color="#ff7a1a" />
             <stop offset="100%" stop-color="rgba(255, 100, 30, 0)" />
           </radialGradient>
-          <!-- 等离子体表面纹理：不规则、非常缓慢地流动 -->
-          <filter id="sunPlasma">
-            <feTurbulence type="fractalNoise" baseFrequency="0.015 0.022" numOctaves="4" seed="3">
-              <animate attributeName="baseFrequency" dur="60s" values="0.013 0.02;0.017 0.025;0.013 0.02" repeatCount="indefinite" />
-            </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" scale="16" />
-          </filter>
-          <!-- 整体发光 -->
           <filter id="sunGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="5" />
+            <feGaussianBlur stdDeviation="4" />
           </filter>
         </defs>
-
-        <!-- 底层：被扭曲的等离子体 -->
-        <circle cx="0" cy="0" r="92" fill="url(#sunCore)" filter="url(#sunPlasma)" />
-        <!-- 最亮的核心白点 -->
-        <circle cx="-6" cy="-8" r="20" fill="#fffdf2" opacity="0.85" filter="url(#sunGlow)" />
+        <circle cx="0" cy="0" r="92" fill="url(#sunCore)" />
+        <circle cx="-6" cy="-8" r="16" fill="#fffdf2" opacity="0.8" filter="url(#sunGlow)" />
       </svg>
     </div>
 
@@ -858,9 +843,9 @@ onUnmounted(() => {
 /* 太阳 */
 .sun-wrap {
   position: absolute;
-  width: 96px;
-  height: 96px;
-  margin: -48px 0 0 -48px;
+  width: 75px;
+  height: 75px;
+  margin: -37.5px 0 0 -37.5px;
   transition:
     left 4s var(--ease-glide),
     top 4s var(--ease-glide);
@@ -868,11 +853,11 @@ onUnmounted(() => {
 
 .sun-core-svg {
   position: absolute;
-  inset: -42px;
-  width: 180px;
-  height: 180px;
-  filter: drop-shadow(0 0 24px rgba(255, 200, 110, 0.4))
-    drop-shadow(0 0 60px rgba(255, 160, 60, 0.2));
+  inset: -32px;
+  width: 139px;
+  height: 139px;
+  filter: drop-shadow(0 0 20px rgba(255, 200, 110, 0.45))
+    drop-shadow(0 0 48px rgba(255, 160, 60, 0.22));
   transition: opacity 2.2s var(--ease-glide);
   overflow: visible;
 }
@@ -915,9 +900,9 @@ onUnmounted(() => {
   position: absolute;
   left: 82%;
   top: 12%;
-  width: 64px;
-  height: 64px;
-  margin-left: -32px;
+  width: 75px;
+  height: 75px;
+  margin-left: -37.5px;
   transition:
     left 3s var(--ease-glide),
     top 3s var(--ease-glide),
@@ -1225,25 +1210,25 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .sun-wrap {
-    width: 64px;
-    height: 64px;
-    margin: -32px 0 0 -32px;
+    width: 52px;
+    height: 52px;
+    margin: -26px 0 0 -26px;
   }
 
   .sun-core-svg {
-    inset: -28px;
-    width: 120px;
-    height: 120px;
+    inset: -22px;
+    width: 96px;
+    height: 96px;
   }
 
   .sun-corona {
-    inset: -100px;
+    inset: -80px;
   }
 
   .moon-wrap {
-    width: 48px;
-    height: 48px;
-    margin-left: -24px;
+    width: 52px;
+    height: 52px;
+    margin-left: -26px;
   }
 
   .moon-halo {
