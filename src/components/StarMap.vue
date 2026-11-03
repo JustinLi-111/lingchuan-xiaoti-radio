@@ -93,7 +93,7 @@ const mapData = computed(() => {
     if (!name) name = FALLBACK_NAMES.find((n) => !usedNames.has(n)) ?? `第 ${index + 1} 夜座`
     usedNames.add(name)
 
-    const ring = index === 0 ? 0 : Math.min(330, 64 * Math.sqrt(index))
+    const ring = Math.min(380, 86 * Math.sqrt(index + 1))
     const angle = index * GOLDEN_ANGLE
 
     return {
@@ -270,7 +270,8 @@ const onPointerUp = (e: PointerEvent) => {
   dragState.pointerId = -1
 
   // 如果没怎么动，当作点击：命中离当前光标最近的星
-  if (moved <= 4) {
+  // 阈值 8px：真实鼠标点击的微小抖动通常 ≤5px，留一点余量
+  if (moved <= 8) {
     const svg = svgRef.value
     const ctm = svg?.getScreenCTM()
     if (!svg || !ctm) return
