@@ -249,7 +249,10 @@ const onPointerDown = (e: PointerEvent) => {
   const ctm = svgRef.value?.getScreenCTM()
   dragState.scale = ctm ? Math.hypot(ctm.a, ctm.b) : 1
   dragging.value = true
-  svgRef.value?.setPointerCapture(e.pointerId)
+  // 注册 window 级监听，保证无论拖到哪里都能收到 up/move
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onPointerUp)
 }
 
 const onPointerMove = (e: PointerEvent) => {
@@ -268,10 +271,13 @@ const onPointerUp = (e: PointerEvent) => {
   const moved = dragState.moved
   dragging.value = false
   dragState.pointerId = -1
+  // 清理 window 监听
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', onPointerUp)
+  window.removeEventListener('pointercancel', onPointerUp)
 
   // 如果没怎么动，当作点击：命中离当前光标最近的星
-  // 阈值 8px：真实鼠标点击的微小抖动通常 ≤5px，留一点余量
-  if (moved <= 8) {
+  if (moved <= 10) {
     const svg = svgRef.value
     const ctm = svg?.getScreenCTM()
     if (!svg || !ctm) return
@@ -279,22 +285,20 @@ const onPointerUp = (e: PointerEvent) => {
     point.x = e.clientX
     point.y = e.clientY
     const local = point.matrixTransform(ctm.inverse())
-    // 在屏幕上用固定像素半径命中，不随缩放变
-    const hitPx = 18
+    const hitPx = 22
     let nearest: MapStar | null = null
     let nearestD = Infinity
     for (const star of mapData.value.stars) {
       const dx = star.x - local.x
       const dy = star.y - local.y
       const distLocal = Math.hypot(dx, dy)
-      const distScreen = distLocal * ctm.a // ctm.a ≈ view.k * pxPerUnit
+      const distScreen = distLocal * Math.hypot(ctm.a, ctm.b)
       if (distScreen < hitPx && distScreen < nearestD) {
         nearestD = distScreen
         nearest = star
       }
     }
     if (nearest) selected.value = nearest.story
-    else selected.value = null
   }
 }
 
@@ -328,9 +332,6 @@ watch(
       class="star-map"
       :class="dragging ? 'is-dragging' : ''"
       @pointerdown="onPointerDown"
-      @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerUp"
       @wheel.prevent="onWheel"
     >
       <g :transform="mapTransform">
@@ -371,6 +372,7 @@ watch(
           :class="{ 'is-selected': selected?.id === star.story.id }"
           @pointerenter="hovered = star"
           @pointerleave="hovered = null"
+          @click.stop="selected = star.story"
         >
           <circle :cx="star.x" :cy="star.y" :r="hitRadius" fill="transparent" />
           <circle
