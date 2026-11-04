@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ZoomIn, ZoomOut, Maximize2, X, Play } from 'lucide-vue-next'
+import { useTogether } from '@/composables/useTogether'
 import type { Story } from '@/composables/useSupabaseStories'
 
 const props = defineProps<{ stories: Story[] }>()
@@ -181,6 +182,37 @@ const screenScale = computed(() => view.value.k * pxPerUnit.value)
 const labelSize = computed(() => 11 / screenScale.value)
 const hitRadius = computed(() => 14 / screenScale.value)
 const inverseScale = computed(() => 1 / screenScale.value)
+
+/* ---------------- 望远镜光点：对方停留在哪颗星 ---------------- */
+const { partnerGaze, publishGaze } = useTogether()
+
+const gazeMark = computed(() => {
+  const g = partnerGaze.value
+  if (!g) return null
+  const star = mapData.value.stars.find((s) => s.story.id === g.starId)
+  if (!star) return null
+  return { x: star.x, y: star.y, text: `${g.byName}在看这` }
+})
+
+let gazeTimer: number | null = null
+let lastGazeStar = -1
+let lastPublishAt = 0
+
+watch(hovered, (star) => {
+  if (gazeTimer !== null) {
+    clearTimeout(gazeTimer)
+    gazeTimer = null
+  }
+  if (!star) return
+  const id = star.story.id
+  // 停留 3 秒才把自己的位置告诉对方，避免拖动时乱闪
+  gazeTimer = window.setTimeout(() => {
+    if (lastGazeStar === id && Date.now() - lastPublishAt < 20_000) return
+    lastGazeStar = id
+    lastPublishAt = Date.now()
+    void publishGaze(id, star.story.title)
+  }, 3000)
+})
 const starRadius = (star: MapStar) => Math.max(star.r, 3.4 / screenScale.value)
 const glowRadius = (star: MapStar) => starRadius(star) * 4
 
@@ -200,6 +232,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   resizeObserver = null
+  if (gazeTimer !== null) {
+    clearTimeout(gazeTimer)
+    gazeTimer = null
+  }
 })
 
 
@@ -402,7 +438,22 @@ watch(
           />
         </g>
 
-        <!-- 悬停提示：发布时间 -->
+        <!-- 望远镜光点：对方正在看的那颗星 -->
+        <g
+          v-if="gazeMark"
+          :transform="`translate(${gazeMark.x} ${gazeMark.y}) scale(${inverseScale})`"
+          class="gaze-mark"
+        >
+          <circle class="gaze-dot" cx="9" cy="-13" r="3" fill="rgba(170, 205, 255, 0.9)" />
+          <text
+            x="16"
+            y="-9"
+            font-size="10"
+            fill="rgba(200, 220, 255, 0.72)"
+            font-family="ui-monospace, Menlo, monospace"
+          >{{ gazeMark.text }}</text>
+        </g>
+
         <g
           v-if="hovered"
           :transform="`translate(${hovered.x} ${hovered.y}) scale(${inverseScale})`"
@@ -482,6 +533,26 @@ watch(
 
 .star-map.is-dragging {
   cursor: grabbing;
+}
+
+/* 望远镜光点：极淡，只在对方停留时露一下 */
+.gaze-mark {
+  pointer-events: none;
+}
+
+.gaze-dot {
+  animation: gazePulse 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(170, 205, 255, 0.55));
+}
+
+@keyframes gazePulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .star-node {

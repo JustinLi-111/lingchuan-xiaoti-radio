@@ -4,6 +4,7 @@ import { useStarrySky } from '@/composables/useStarrySky'
 import { useRealSky } from '@/composables/useRealSky'
 import { useWeather } from '@/composables/useWeather'
 import { useSkySnapshot } from '@/composables/useSkySnapshot'
+import { useTogether } from '@/composables/useTogether'
 import { CONSTELLATION_LINES, computeSky, moonLitPath, projectAltAz } from '@/lib/skyMath'
 
 interface Star {
@@ -29,6 +30,18 @@ const { audioLevel, dim, onShootingStar } = useStarrySky()
 const { sky, sunAlt, sunAz } = useRealSky()
 const { weather, starDim } = useWeather()
 const { targetDate, targetMeta } = useSkySnapshot()
+const { moonClaim, deviceId } = useTogether()
+
+/** 月亮旁的认领牌：今晚谁第一个看到月亮 */
+const moonPlaque = computed(() => {
+  const claim = moonClaim.value
+  if (!claim) return ''
+  const d = new Date(claim.at)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const who = claim.by === deviceId ? '你先看到的' : `${claim.byName}先看到的`
+  return `${day} · ${who}`
+})
 
 /* 快照优先：如果锁了"那一夜"，所有天文量用重算值 */
 const snapshotSky = computed(() => targetDate.value ? computeSky(targetDate.value) : null)
@@ -657,6 +670,9 @@ onUnmounted(() => {
         <!-- 终止线附近的阴影渐变（让明暗过渡更自然立体） -->
         <path :d="moonPath" fill="url(#moonTerminator)" opacity="0" />
       </svg>
+
+      <!-- 月亮认领牌：今晚谁先看到的 -->
+      <div v-if="moonPlaque" class="moon-plaque">{{ moonPlaque }}</div>
     </div>
 
     <!-- 天气：西安未央此刻的云、雨、雪 -->
@@ -966,6 +982,36 @@ onUnmounted(() => {
   display: block;
   filter: drop-shadow(0 0 10px rgba(220, 232, 255, 0.26))
     drop-shadow(0 0 28px rgba(180, 200, 240, 0.12));
+}
+
+/* 月亮认领牌：今晚谁第一个看到的 */
+.moon-plaque {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(220, 234, 255, 0.78);
+  background: rgba(10, 16, 32, 0.55);
+  border: 1px solid rgba(180, 204, 255, 0.22);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  animation: plaqueFade 0.8s ease both;
+}
+
+@keyframes plaqueFade {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 @keyframes moonBreath {

@@ -1,16 +1,32 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Moon, ChevronDown, Plus, Sparkles } from 'lucide-vue-next'
 import NavBar from '@/components/NavBar.vue'
 import AudioPlayer from '@/components/AudioPlayer.vue'
 import CommentSection from '@/components/CommentSection.vue'
 import UploadStoryModal from '@/components/UploadStoryModal.vue'
+import TogetherBar from '@/components/TogetherBar.vue'
 import { useSupabaseStories } from '@/composables/useSupabaseStories'
+import { useTogether } from '@/composables/useTogether'
 
 const router = useRouter()
 const route = useRoute()
 const { stories, latestStory, isAdmin, fetchStories, checkAdmin, init, loading } = useSupabaseStories()
+const { togetherMode, listen, deviceId } = useTogether()
+
+/* 对方点了另一条故事 → 自己也跳过去，等 AudioPlayer 应用进度 */
+watch(
+  listen,
+  (state) => {
+    if (!togetherMode.value || !state || !state.active || state.by === deviceId) return
+    if (!state.storyId) return
+    if (Number(route.query.storyId) === state.storyId) return
+    if (!stories.value.some((s) => s.id === state.storyId)) return
+    router.replace({ query: { ...route.query, storyId: state.storyId } })
+  },
+  { deep: true },
+)
 
 const showContent = ref(false)
 const showUploadModal = ref(false)
@@ -109,6 +125,11 @@ onMounted(async () => {
           </div>
           
           <AudioPlayer :story="currentStory" />
+
+          <!-- 双人互动：一起听 / 抢月亮 -->
+          <div class="mt-10">
+            <TogetherBar />
+          </div>
         </section>
         
         <!-- 晚安语区域 -->
