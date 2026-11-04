@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Noto+Serif+SC:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+/* 字体走国内镜像（fonts.loli.net），googleapis 直连会被墙，
+   而 @import 挂起会导致整个样式表延迟生效（手机端"能进但不显示"的根因） */
+@import url('https://fonts.loli.net/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Noto+Serif+SC:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
