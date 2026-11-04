@@ -10,9 +10,6 @@ const {
   deviceId,
   myName,
   setMyName,
-  togetherMode,
-  setTogetherMode,
-  listen,
   moonClaim,
   partnerName,
   partnerOnline,
@@ -55,24 +52,16 @@ const moonWindowOpen = computed(() => {
   return now.value >= rise && now.value < rise + 8 * 3600_000
 })
 
-const formatTime = (total: number) => {
-  const t = Number.isFinite(total) && total > 0 ? total : 0
-  const m = Math.floor(t / 60)
-  const s = Math.floor(t % 60)
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-/* ---------- 一起听：对方状态 ---------- */
-const remote = computed(() => {
-  const r = listen.value
-  if (!r || !r.active || r.by === deviceId) return null
-  const elapsed = r.playing ? (now.value - (r._updatedAt ?? now.value)) / 1000 : 0
-  return {
-    name: r.byName,
-    playing: r.playing,
-    pos: Math.max(0, r.pos + elapsed),
-    title: r.title || '',
+/* ---------- 在线陪伴提示 ---------- */
+const companionText = computed(() => {
+  const partner = partnerName.value
+  if (!partnerOnline.value) {
+    if (myName.value === '小狗') return '等哥哥上线'
+    if (myName.value === '哥哥') return '等小狗上线'
+    return '等对方上线'
   }
+  if (myName.value === '小狗') return `${partner || '哥哥'}在线，在陪小狗听`
+  return `${partner || '小狗'}在线`
 })
 
 /* ---------- 抢月亮 ---------- */
@@ -112,24 +101,10 @@ const claim = async () => {
       <template v-else>
         <span class="tb-me">{{ myName }}</span>
 
-        <!-- 一起听 -->
-        <button
-          class="tb-action"
-          :class="{ 'is-on': togetherMode }"
-          @click="setTogetherMode(!togetherMode)"
-        >
+        <!-- 在线陪伴 -->
+        <span class="tb-status" :class="{ 'tb-dim': !partnerOnline }">
           <Headphones class="w-3.5 h-3.5" :stroke-width="1.8" />
-          <span>{{ togetherMode ? '一起听已开启' : '一起听' }}</span>
-        </button>
-
-        <span v-if="togetherMode && remote" class="tb-status">
-          {{ remote.name }}正在和你一起听 · {{ remote.playing ? formatTime(remote.pos) : '已暂停' }}
-        </span>
-        <span v-else-if="togetherMode && partnerOnline" class="tb-status tb-dim">
-          {{ partnerName }}在线，等 ta 打开这一页
-        </span>
-        <span v-else-if="togetherMode && !partnerOnline" class="tb-status tb-dim">
-          还没听到另一个人的心跳
+          {{ companionText }}
         </span>
 
         <!-- 抢月亮 -->

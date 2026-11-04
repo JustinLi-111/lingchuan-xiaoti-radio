@@ -3,87 +3,17 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Play, Pause, Rewind, FastForward } from 'lucide-vue-next'
 import type { Story } from '@/composables/useSupabaseStories'
 import { useStarrySky } from '@/composables/useStarrySky'
-import { useTogether } from '@/composables/useTogether'
 
 const props = defineProps<{
   story: Story
 }>()
 
 const { setAudio, requestShootingStar } = useStarrySky()
-const { togetherMode, listen, publishListen, deviceId } = useTogether()
 
 const isPlaying = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
 const audioRef = ref<HTMLAudioElement | null>(null)
-
-/* ---------- 一起听：本地改动上报 / 远端改动应用 ---------- */
-let applyingRemote = false
-let suppressUntil = 0
-
-const localPos = () => audioRef.value?.currentTime ?? 0
-
-const publishNow = (playing: boolean, pos: number) => {
-  if (!togetherMode.value) return
-  void publishListen({
-    storyId: props.story.id,
-    playing,
-    pos,
-    title: props.story.title,
-    active: true,
-  })
-}
-
-/** 远端状态换算成"此刻应该在的秒数" */
-const remoteTarget = (state: typeof listen.value) => {
-  if (!state) return 0
-  if (!state.playing) return state.pos
-  const elapsed = (Date.now() - (state._updatedAt ?? Date.now())) / 1000
-  return state.pos + Math.max(0, elapsed)
-}
-
-watch(
-  listen,
-  (state) => {
-    if (!togetherMode.value || !state || !state.active) return
-    if (state.by === deviceId) return
-    // 超过 15 分钟没人更新的状态不再跟随，避免"对方关掉页面后你还被推着走"
-    if (Date.now() - (state._updatedAt ?? 0) > 15 * 60_000) return
-    const el = audioRef.value
-    if (!el) return
-    // 故事还没切过来时先不动，等 HomePage 完成跳转
-    if (state.storyId !== props.story.id) return
-
-    applyingRemote = true
-    const target = remoteTarget(state)
-
-    if (state.playing) {
-      if (Math.abs(el.currentTime - target) > 2.5) el.currentTime = target
-      if (!isPlaying.value) {
-        el.play()
-          .then(() => { applyingRemote = false })
-          .catch(() => { applyingRemote = false })
-        return
-      }
-      applyingRemote = false
-    } else {
-      if (isPlaying.value) el.pause()
-      if (Math.abs(el.currentTime - target) > 2.5) el.currentTime = target
-      // pause 事件是异步派发的，晚一点再解除标记，免得把自己的回声当成新指令发回去
-      window.setTimeout(() => { applyingRemote = false }, 400)
-    }
-  },
-  { deep: true },
-)
-
-/** 开关"一起听"时，把自己的状态播给对方（关掉时告诉对方别跟了） */
-watch(togetherMode, (on) => {
-  if (on) {
-    publishNow(isPlaying.value, localPos())
-  } else {
-    void publishListen({ storyId: props.story.id, playing: false, pos: localPos(), active: false })
-  }
-})
 
 const BAR_COUNT = 44
 const bars = ref<number[]>(Array.from({ length: BAR_COUNT }, () => 0.08))
@@ -144,12 +74,10 @@ const handleEnded = () => {
 
 const handlePlay = () => {
   isPlaying.value = true
-  if (!applyingRemote && Date.now() > suppressUntil) publishNow(true, localPos())
 }
 
 const handlePause = () => {
   isPlaying.value = false
-  if (!applyingRemote && Date.now() > suppressUntil) publishNow(false, localPos())
 }
 
 const seekToRatio = (ratio: number) => {
@@ -157,7 +85,6 @@ const seekToRatio = (ratio: number) => {
   const clamped = Math.max(0, Math.min(1, ratio))
   audioRef.value.currentTime = clamped * totalSeconds.value
   currentTime.value = audioRef.value.currentTime
-  if (!applyingRemote) publishNow(isPlaying.value, currentTime.value)
 }
 
 const handleSeekInput = (e: Event) => {
@@ -174,7 +101,6 @@ const handleRibbonClick = (e: MouseEvent) => {
 const skip = (delta: number) => {
   if (!audioRef.value) return
   audioRef.value.currentTime = Math.max(0, Math.min(totalSeconds.value, audioRef.value.currentTime + delta))
-  if (!applyingRemote) publishNow(isPlaying.value, audioRef.value.currentTime)
 }
 
 /* ---------- 假波形：不接管音频输出，只做视觉律动 ---------- */
@@ -220,8 +146,6 @@ const paint = (now: number) => {
 watch(
   () => props.story,
   () => {
-    // 故事切换时的自动暂停不该被当作"我按了暂停"上报给对方
-    suppressUntil = Date.now() + 600
     isPlaying.value = false
     currentTime.value = 0
     if (audioRef.value) audioRef.value.load()
