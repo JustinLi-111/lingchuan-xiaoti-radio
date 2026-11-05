@@ -52,7 +52,7 @@ const readDeviceId = () => {
 
 export const deviceId = readDeviceId()
 
-/** 自己是谁：'小狗' 或 '哥哥'，第一次使用时在互动条上选一次 */
+/** 自己是谁：'小华' 或 '哥哥'，第一次使用时在互动条上选一次 */
 export const myName = ref(localStorage.getItem(NAME_KEY) || '')
 export const setMyName = (name: string) => {
   myName.value = name

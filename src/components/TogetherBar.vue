@@ -56,12 +56,12 @@ const moonWindowOpen = computed(() => {
 const companionText = computed(() => {
   const partner = partnerName.value
   if (!partnerOnline.value) {
-    if (myName.value === '小狗') return '等哥哥上线'
-    if (myName.value === '哥哥') return '等小狗上线'
+    if (myName.value === '小华') return '等哥哥上线'
+    if (myName.value === '哥哥') return '等小华上线'
     return '等对方上线'
   }
-  if (myName.value === '小狗') return `${partner || '哥哥'}在线，在陪小狗听`
-  return `${partner || '小狗'}在线`
+  if (myName.value === '小华') return `${partner || '哥哥'}在线，在陪小华听`
+  return `${partner || '小华'}在线`
 })
 
 /* ---------- 抢月亮 ---------- */
@@ -94,7 +94,7 @@ const claim = async () => {
       <!-- 身份选择 -->
       <div v-if="!myName" class="tb-ident">
         <span class="tb-ident-label">你是</span>
-        <button class="tb-chip" @click="setMyName('小狗')">小狗</button>
+        <button class="tb-chip" @click="setMyName('小华')">小华</button>
         <button class="tb-chip" @click="setMyName('哥哥')">哥哥</button>
       </div>
 
